@@ -27,8 +27,8 @@ require (
 	github.com/google/go-containerregistry v0.15.2
 	github.com/google/uuid v1.3.0
 	github.com/iancoleman/strcase v0.3.0
-	// https://github.com/moby/buildkit/commit/bbe48e778f9df07eabc7fc05023c8e97e3c5c5ce
-	github.com/moby/buildkit v0.12.1-0.20230919110756-bbe48e778f9d
+	// https://github.com/moby/buildkit/commit/4c89091c5d9eaee7c9d660fbe73cbe0863c72052
+	github.com/moby/buildkit v0.12.1-0.20230927072102-4c89091c5d9e
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.0-rc3
 	github.com/opencontainers/runtime-spec v1.1.0-rc.2
@@ -91,6 +91,7 @@ require (
 	cdr.dev/slog v1.4.2 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230106234847-43070de90fa1 // indirect
+	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20221215162035-5330a85ea652 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.1.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.1.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.0.0 // indirect
@@ -133,6 +134,7 @@ require (
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/distribution/reference v0.5.0 // indirect
 	github.com/dlclark/regexp2 v1.9.0 // indirect
+	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/dop251/goja v0.0.0-20230402114112-623f9dda9079 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect

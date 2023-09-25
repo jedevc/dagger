@@ -1,5 +1,5 @@
-//go:build linux && !no_oci_worker
-// +build linux,!no_oci_worker
+//go:build linux
+// +build linux
 
 package main
 
@@ -168,13 +168,13 @@ func init() {
 		Hidden: len(defaultConf.Workers.OCI.GCPolicy) != 0,
 	})
 
-	registerWorkerInitializer(
-		workerInitializer{
-			fn:       ociWorkerInitializer,
-			priority: 0,
-		},
-		flags...,
-	)
+	// registerWorkerInitializer(
+	// 	workerInitializer{
+	// 		fn:       ociWorkerInitializer,
+	// 		priority: 0,
+	// 	},
+	// 	flags...,
+	// )
 	// TODO: allow multiple oci runtimes
 }
 

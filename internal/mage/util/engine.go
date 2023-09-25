@@ -16,15 +16,17 @@ import (
 )
 
 const (
-	engineBinName = "dagger-engine"
-	shimBinName   = "dagger-shim"
-	golangVersion = "1.20.7"
-	alpineVersion = "3.18"
-	runcVersion   = "v1.1.9"
-	cniVersion    = "v1.3.0"
-	qemuBinImage  = "tonistiigi/binfmt@sha256:e06789462ac7e2e096b53bfd9e607412426850227afeb1d0f5dfa48a731e0ba5"
+	engineBinName     = "dagger-engine"
+	shimBinName       = "dagger-shim"
+	golangVersion     = "1.20.7"
+	alpineVersion     = "3.18"
+	runcVersion       = "v1.1.9"
+	cniVersion        = "v1.3.0"
+	containerdVersion = "v1.7.2"
+	qemuBinImage      = "tonistiigi/binfmt@sha256:e06789462ac7e2e096b53bfd9e607412426850227afeb1d0f5dfa48a731e0ba5"
 
-	engineTomlPath = "/etc/dagger/engine.toml"
+	engineTomlPath     = "/etc/dagger/engine.toml"
+	containerdTomlPath = "/etc/dagger/containerd.toml"
 	// NOTE: this needs to be consistent with DefaultStateDir in internal/engine/docker.go
 	EngineDefaultStateDir = "/var/lib/dagger"
 
@@ -50,6 +52,8 @@ if [ -f /sys/fs/cgroup/cgroup.controllers ]; then
 		> /sys/fs/cgroup/cgroup.subtree_control
 fi
 
+{{.ContainerdBin}} --config {{.ContainerdConfig}} --log-level debug &
+sleep 2
 exec {{.EngineBin}} --config {{.EngineConfig}} {{ range $key := .EntrypointArgKeys -}}--{{ $key }}="{{ index $.EntrypointArgs $key }}" {{ end -}} "$@"
 `
 
@@ -60,6 +64,10 @@ insecure-entitlements = ["security.insecure"]
 [{{ $key }}]
 {{ index $.ConfigEntries $key }}
 {{ end -}}
+`
+
+const containerdConfig = `
+version = 2
 `
 
 // DevEngineOpts are options for the dev engine
@@ -83,6 +91,8 @@ func getEntrypoint(opts ...DevEngineOpts) (string, error) {
 		Bridge            string
 		EngineBin         string
 		EngineConfig      string
+		ContainerdBin     string
+		ContainerdConfig  string
 		EntrypointArgs    map[string]string
 		EntrypointArgKeys []string
 	}
@@ -91,6 +101,8 @@ func getEntrypoint(opts ...DevEngineOpts) (string, error) {
 	err := tmpl.Execute(buf, entrypointTmplParams{
 		EngineBin:         "/usr/local/bin/" + engineBinName,
 		EngineConfig:      engineTomlPath,
+		ContainerdBin:     "/usr/local/bin/containerd",
+		ContainerdConfig:  containerdTomlPath,
 		EntrypointArgs:    mergedOpts,
 		EntrypointArgKeys: keys,
 	})
@@ -215,10 +227,15 @@ func devEngineContainer(c *dagger.Client, arch string, version string, opts ...D
 		WithFile("/usr/local/bin/"+shimBinName, shimBin(c, arch)).
 		WithFile("/usr/local/bin/"+engineBinName, engineBin(c, arch, version)).
 		WithDirectory("/usr/local/bin", qemuBins(c, arch)).
+		WithDirectory("/usr/local/bin", containerdBin(c, arch)).
 		WithDirectory("/", cniPlugins(c, arch)).
 		WithDirectory(EngineDefaultStateDir, c.Directory()).
 		WithNewFile(engineTomlPath, dagger.ContainerWithNewFileOpts{
 			Contents:    engineConfig,
+			Permissions: 0o600,
+		}).
+		WithNewFile(containerdTomlPath, dagger.ContainerWithNewFileOpts{
+			Contents:    containerdConfig,
 			Permissions: 0o600,
 		}).
 		WithNewFile(engineEntrypointPath, dagger.ContainerWithNewFileOpts{
@@ -313,6 +330,30 @@ func runcBin(c *dagger.Client, arch string) *dagger.File {
 		WithWorkdir("/src").
 		WithExec([]string{"xx-go", "build", "-trimpath", "-buildmode=pie", "-tags", "seccomp netgo osusergo", "-ldflags", "-X main.version=" + runcVersion + " -linkmode external -extldflags -static-pie", "-o", "runc", "."}).
 		File("runc")
+}
+
+func containerdBin(c *dagger.Client, arch string) *dagger.Directory {
+	// We build containerd from source to enable upgrades to go and other dependencies that
+	// can contain CVEs in the builds on github releases
+	return c.Container().
+		From(fmt.Sprintf("golang:%s-alpine%s", golangVersion, alpineVersion)).
+		WithEnvVariable("GOARCH", arch).
+		WithEnvVariable("BUILDPLATFORM", "linux/"+runtime.GOARCH).
+		WithEnvVariable("TARGETPLATFORM", "linux/"+arch).
+		WithEnvVariable("CGO_ENABLED", "1").
+		WithExec([]string{"apk", "add", "clang", "lld", "git", "pkgconf"}).
+		WithDirectory("/", c.Container().From("tonistiigi/xx:1.2.1").Rootfs()).
+		WithExec([]string{"xx-apk", "update"}).
+		WithExec([]string{"xx-apk", "add", "build-base", "pkgconf", "libseccomp-dev", "libseccomp-static"}).
+		WithMountedCache("/go/pkg/mod", c.CacheVolume("go-mod")).
+		WithMountedCache("/root/.cache/go-build", c.CacheVolume("go-build")).
+		WithMountedDirectory("/src", c.Git("github.com/containerd/containerd", dagger.GitOpts{KeepGitDir: true}).Tag(containerdVersion).Tree()).
+		WithWorkdir("/src").
+		WithExec([]string{"xx-go", "--wrap"}).
+		WithExec([]string{"make", "bin/containerd"}).
+		WithExec([]string{"make", "bin/containerd-shim-runc-v2"}).
+		WithExec([]string{"make", "bin/ctr"}).
+		Directory("bin/")
 }
 
 func shimBin(c *dagger.Client, arch string) *dagger.File {
