@@ -79,13 +79,13 @@ func runProcessGroup(ctx context.Context, cmd *exec.Cmd) error {
 func overrideNetworkConfig(hostsOverride, resolvOverride string) error {
 	if hostsOverride != "" {
 		if err := mount.Mount(hostsOverride, "/etc/hosts", "", "bind"); err != nil {
-			return errors.Wrap(err, "mount hosts override")
+			return errors.Wrapf(err, "could not mount hosts override from %s", hostsOverride)
 		}
 	}
 
 	if resolvOverride != "" {
 		if err := syscall.Mount(resolvOverride, "/etc/resolv.conf", "", syscall.MS_BIND, ""); err != nil {
-			return errors.Wrap(err, "mount resolv override")
+			return errors.Wrapf(err, "could not mount resolv override from %s", resolvOverride)
 		}
 	}
 
