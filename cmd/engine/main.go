@@ -259,6 +259,7 @@ func main() { //nolint:gocyclo
 			return err
 		}
 
+		// TODO: this means debug logs before this aren't used
 		logrus.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
 		if cfg.Debug {
 			logrus.SetLevel(logrus.DebugLevel)

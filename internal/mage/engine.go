@@ -271,7 +271,8 @@ func (t Engine) Dev(ctx context.Context) error {
 	tarPath := "./bin/engine.tar"
 
 	_, err = c.Container().Export(ctx, tarPath, dagger.ContainerExportOpts{
-		PlatformVariants: util.DevEngineContainer(c, arches, ""),
+		// PlatformVariants: util.DevEngineContainer(c, arches, ""),
+		PlatformVariants: util.DevRunnerContainer(c, arches, ""),
 	})
 	if err != nil {
 		return err

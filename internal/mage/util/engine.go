@@ -25,8 +25,7 @@ const (
 	containerdVersion = "v1.7.2"
 	qemuBinImage      = "tonistiigi/binfmt@sha256:e06789462ac7e2e096b53bfd9e607412426850227afeb1d0f5dfa48a731e0ba5"
 
-	engineTomlPath     = "/etc/dagger/engine.toml"
-	containerdTomlPath = "/etc/dagger/containerd.toml"
+	engineTomlPath = "/etc/dagger/engine.toml"
 	// NOTE: this needs to be consistent with DefaultStateDir in internal/engine/docker.go
 	EngineDefaultStateDir = "/var/lib/dagger"
 
@@ -52,8 +51,6 @@ if [ -f /sys/fs/cgroup/cgroup.controllers ]; then
 		> /sys/fs/cgroup/cgroup.subtree_control
 fi
 
-{{.ContainerdBin}} --config {{.ContainerdConfig}} --log-level debug &
-sleep 2
 exec {{.EngineBin}} --config {{.EngineConfig}} {{ range $key := .EntrypointArgKeys -}}--{{ $key }}="{{ index $.EntrypointArgs $key }}" {{ end -}} "$@"
 `
 
@@ -64,10 +61,6 @@ insecure-entitlements = ["security.insecure"]
 [{{ $key }}]
 {{ index $.ConfigEntries $key }}
 {{ end -}}
-`
-
-const containerdConfig = `
-version = 2
 `
 
 // DevEngineOpts are options for the dev engine
@@ -91,8 +84,6 @@ func getEntrypoint(opts ...DevEngineOpts) (string, error) {
 		Bridge            string
 		EngineBin         string
 		EngineConfig      string
-		ContainerdBin     string
-		ContainerdConfig  string
 		EntrypointArgs    map[string]string
 		EntrypointArgKeys []string
 	}
@@ -101,8 +92,6 @@ func getEntrypoint(opts ...DevEngineOpts) (string, error) {
 	err := tmpl.Execute(buf, entrypointTmplParams{
 		EngineBin:         "/usr/local/bin/" + engineBinName,
 		EngineConfig:      engineTomlPath,
-		ContainerdBin:     "/usr/local/bin/containerd",
-		ContainerdConfig:  containerdTomlPath,
 		EntrypointArgs:    mergedOpts,
 		EntrypointArgKeys: keys,
 	})
@@ -242,6 +231,7 @@ func devEngineContainer(c *dagger.Client, arch string, version string, opts ...D
 			Contents:    engineEntrypoint,
 			Permissions: 0o755,
 		}).
+		// WithEnvVariable("BUILDKIT_DEBUG_EXEC_OUTPUT", "1").
 		WithEntrypoint([]string{"dagger-entrypoint.sh"})
 }
 
