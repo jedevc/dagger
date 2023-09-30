@@ -350,7 +350,7 @@ func ociWorkerInitializer(c *cli.Context, common workerInitializerOpt) ([]worker
 		return nil, err
 	}
 	if err := registerDaggerCustomSources(w, dns); err != nil {
-		return nil, fmt.Errorf("register Dagger sources: %w", err)
+		return nil, errors.Wrap(err, "register Dagger sources")
 	}
 	return []worker.Worker{w}, nil
 }
