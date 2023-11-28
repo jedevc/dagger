@@ -52,7 +52,7 @@ func TestSecretScrubWriterWrite(t *testing.T) {
 		require.NoError(t, err)
 		out, err := io.ReadAll(r)
 		require.NoError(t, err)
-		want := "I love to share *** to my close ones. But I keep *** to myself. As well as ***."
+		want := "I love to share *************** to my close ones. But I keep ************** to myself. As well as ************************************."
 		require.Equal(t, want, string(out))
 	})
 
@@ -183,9 +183,9 @@ func TestScrubSecretWrite(t *testing.T) {
 
 	t.Run("multiline secret", func(t *testing.T) {
 		for input, expectedOutput := range map[string]string{
-			"aaa\n" + sshSecretKey + "\nbbb\nccc": "aaa\n***\nbbb\nccc",
-			"aaa" + sshSecretKey + "bbb\nccc":     "aaa***bbb\nccc",
-			sshSecretKey:                          "***",
+			"aaa\n" + sshSecretKey + "\nbbb\nccc": "aaa\n" + strings.Repeat("*", len(sshSecretKey)) + "\nbbb\nccc",
+			"aaa" + sshSecretKey + "bbb\nccc":     "aaa" + strings.Repeat("*", len(sshSecretKey)) + "bbb\nccc",
+			sshSecretKey:                          strings.Repeat("*", len(sshSecretKey)),
 		} {
 			var buf bytes.Buffer
 			r, err := NewSecretScrubReader(&buf, "/", fstest.MapFS{}, env, secretToScrubInfo)
@@ -207,7 +207,7 @@ func TestScrubSecretWrite(t *testing.T) {
 		require.NoError(t, err)
 		out, err := io.ReadAll(r)
 		require.NoError(t, err)
-		require.Equal(t, "aaa\n***\nno secret\n", string(out))
+		require.Equal(t, "aaa\n*************\nno secret\n", string(out))
 	})
 
 	t.Run("multi write", func(t *testing.T) {
@@ -221,8 +221,8 @@ func TestScrubSecretWrite(t *testing.T) {
 			"nonsecret",
 		}
 		outputLines := []string{
-			"***",
-			"***",
+			"*************",
+			"*******",
 			"nonsecret",
 		}
 
@@ -303,7 +303,7 @@ func TestScrubSecretLogLatency(t *testing.T) {
 			buf := make([]byte, 1024)
 			n, err := r.Read(buf)
 			require.NoError(t, err)
-			require.Equal(t, "hello ***\n", string(buf[:n]))
+			require.Equal(t, "hello **********\n", string(buf[:n]))
 			wg.Done()
 		}()
 		wg.Wait()
@@ -325,7 +325,7 @@ func TestScrubSecretLogLatency(t *testing.T) {
 			buf := make([]byte, 1024)
 			n, err := r.Read(buf)
 			require.NoError(t, err)
-			require.Equal(t, "hello TOP_******TOP_\n", string(buf[:n]))
+			require.Equal(t, "hello TOP_********************TOP_\n", string(buf[:n]))
 			wg.Done()
 		}()
 		wg.Wait()
@@ -347,7 +347,7 @@ func TestScrubSecretLogLatency(t *testing.T) {
 			buf := make([]byte, 1024)
 			n, err := r.Read(buf)
 			require.NoError(t, err)
-			require.Equal(t, "yy***\n", string(buf[:n]))
+			require.Equal(t, "yy*\n", string(buf[:n]))
 			wg.Done()
 		}()
 		wg.Wait()
@@ -374,7 +374,7 @@ func TestScrubSecretLogLatency(t *testing.T) {
 			require.Equal(t, "hello ", string(buf[:n]))
 			n, err = r.Read(buf)
 			require.NoError(t, err)
-			require.Equal(t, "***!\n", string(buf[:n]))
+			require.Equal(t, "**********!\n", string(buf[:n]))
 			wg.Done()
 		}()
 		wg.Wait()
@@ -434,7 +434,13 @@ func TestScrubSecretLogLatency(t *testing.T) {
 			require.Equal(t, "hello\n", string(buf[:n]))
 			n, err = r.Read(buf)
 			require.NoError(t, err)
-			require.Equal(t, "***a\n", string(buf[:n]))
+			require.Equal(t, strings.Repeat("*", 4096), string(buf[:n]))
+			n, err = r.Read(buf)
+			require.NoError(t, err)
+			require.Equal(t, strings.Repeat("*", 4096), string(buf[:n]))
+			n, err = r.Read(buf)
+			require.NoError(t, err)
+			require.Equal(t, strings.Repeat("*", 1808)+"a\n", string(buf[:n]))
 
 			n, err = r.Read(buf)
 			require.NoError(t, err)

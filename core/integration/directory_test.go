@@ -769,7 +769,7 @@ CMD cat /secret
 
 		stdout, err := src.DockerBuild(dagger.DirectoryDockerBuildOpts{Secrets: []*dagger.Secret{sec}}).Stdout(ctx)
 		require.NoError(t, err)
-		require.Contains(t, stdout, "***")
+		require.Contains(t, stdout, "******")
 	})
 }
 

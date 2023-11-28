@@ -232,7 +232,7 @@ CMD cat /secret
 			Secrets: []*dagger.Secret{sec},
 		}).Stdout(ctx)
 		require.NoError(t, err)
-		require.Contains(t, stdout, "***")
+		require.Contains(t, stdout, "******")
 	})
 
 	t.Run("just build, don't execute", func(t *testing.T) {

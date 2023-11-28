@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/fs"
@@ -11,10 +12,9 @@ import (
 	"golang.org/x/text/transform"
 )
 
-var (
-	// scrubString will be used as replacement for found secrets:
-	scrubString = []byte("***")
-)
+func scrubSecret(s []byte) []byte {
+	return bytes.Repeat([]byte("*"), len(s))
+}
 
 func NewSecretScrubReader(r io.Reader, currentDirPath string, fsys fs.FS, env []string, secretsToScrub core.SecretToScrubInfo) (io.Reader, error) {
 	secrets := loadSecretsToScrubFromEnv(env, secretsToScrub.Envs)
@@ -36,7 +36,7 @@ func NewSecretScrubReader(r io.Reader, currentDirPath string, fsys fs.FS, env []
 
 	trie := &Trie{}
 	for _, s := range secretAsBytes {
-		trie.Insert([]byte(s), scrubString)
+		trie.Insert([]byte(s), scrubSecret(s))
 	}
 	transformer := &censor{
 		trie:     trie,

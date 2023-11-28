@@ -4,6 +4,7 @@ import (
 	"bytes"
 	_ "embed"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/dagger/dagger/internal/testutil"
@@ -132,7 +133,7 @@ func TestSecretWhitespaceScrubbed(t *testing.T) {
 		WithExec([]string{"sh", "-c", "echo -n \"$AWS_KEY\""}).
 		Stdout(ctx)
 	require.NoError(t, err)
-	require.Equal(t, "***", stdout)
+	require.Equal(t, strings.Repeat("*", len(secretValue)), stdout)
 }
 
 func TestSecretBigScrubbed(t *testing.T) {
@@ -150,7 +151,7 @@ func TestSecretBigScrubbed(t *testing.T) {
 
 	stdout, err := sec.Stdout(ctx)
 	require.NoError(t, err)
-	require.Equal(t, "***", stdout)
+	require.Equal(t, strings.Repeat("*", len(secretValue)), stdout)
 }
 
 //nolint:typecheck

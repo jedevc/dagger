@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/dagger/dagger/core"
@@ -51,7 +52,7 @@ type SecretPlaintext string
 
 // This method ensures that the progrock vertex info does not display the plaintext.
 func (s SecretPlaintext) MarshalText() ([]byte, error) {
-	return []byte("***"), nil
+	return bytes.Repeat([]byte("*"), len(s)), nil
 }
 
 type setSecretArgs struct {
