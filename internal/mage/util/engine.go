@@ -62,10 +62,16 @@ exec {{.EngineBin}} --config {{.EngineConfig}} {{ range $key := .EntrypointArgKe
 const engineConfigTmpl = `
 debug = true
 insecure-entitlements = ["security.insecure"]
+
 {{ range $key := .ConfigKeys }}
 [{{ $key }}]
 {{ index $.ConfigEntries $key }}
 {{ end -}}
+
+[worker.oci]
+  enabled = true
+  gc = false
+
 `
 
 // DevEngineOpts are options for the dev engine

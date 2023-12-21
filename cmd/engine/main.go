@@ -350,12 +350,12 @@ func main() { //nolint:gocyclo
 			}
 		}
 
-		bklog.G(ctx).Debug("starting optional cache mount synchronization")
-		err = cacheManager.StartCacheMountSynchronization(ctx)
-		if err != nil {
-			bklog.G(ctx).WithError(err).Error("failed to start cache mount synchronization")
-			// continue on, doesn't need to be fatal
-		}
+		// bklog.G(ctx).Debug("starting optional cache mount synchronization")
+		// err = cacheManager.StartCacheMountSynchronization(ctx)
+		// if err != nil {
+		// 	bklog.G(ctx).WithError(err).Error("failed to start cache mount synchronization")
+		// 	// continue on, doesn't need to be fatal
+		// }
 
 		// start serving on the listeners for actual clients
 		bklog.G(ctx).Debug("starting main engine grpc listeners")

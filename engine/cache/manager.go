@@ -2,8 +2,10 @@ package cache
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -365,6 +367,10 @@ func (m *manager) Import(ctx context.Context) error {
 	}
 	bklog.G(ctx).Debugf("finished import cache call in %s", time.Since(importCacheCallStart))
 
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	enc.Encode(cacheConfig)
+
 	bklog.G(ctx).Debug("creating descriptor provider pairs")
 	createDescProviderPairsStart := time.Now()
 	descProvider := remotecache.DescriptorProvider{}
@@ -418,7 +424,13 @@ func (m *manager) ID() string {
 func (m *manager) Query(inp []solver.CacheKeyWithSelector, inputIndex solver.Index, dgst digest.Digest, outputIndex solver.Index) ([]*solver.CacheKey, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return m.inner.Query(inp, inputIndex, dgst, outputIndex)
+	res, err := m.inner.Query(inp, inputIndex, dgst, outputIndex)
+	// resIDs := []string{}
+	// for _, res := range res {
+	// 	resIDs = append(resIDs, res.ID+" ("+res.Digest().String()+" "+fmt.Sprint(res.Output())+")")
+	// }
+	// fmt.Println("querying", dgst, outputIndex, "=", resIDs)
+	return res, err
 }
 
 func (m *manager) Records(ctx context.Context, ck *solver.CacheKey) ([]*solver.CacheRecord, error) {

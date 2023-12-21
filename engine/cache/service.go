@@ -356,7 +356,8 @@ func (c *client) UpdateCacheLayers(
 
 //nolint:dupl
 func (c *client) ImportCache(ctx context.Context) (*remotecache.CacheConfig, error) {
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/import", nil)
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", "http://172.17.0.1:8020/magicache"+"/import", nil)
+	// httpReq, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/import", nil)
 	if err != nil {
 		return nil, err
 	}
