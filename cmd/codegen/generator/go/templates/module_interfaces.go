@@ -247,11 +247,11 @@ func (spec *parsedIfaceType) loadFromIDMethodCode() *Statement {
 		Params(Id("id").Id(spec.idTypeName())).
 		Params(Id(spec.name)).
 		BlockFunc(func(g *Group) {
-			g.Id("q").Op(":=").Id("r").Dot("q").Dot("Select").Call(Lit(spec.loadFromIDGQLFieldName()))
+			g.Id("q").Op(":=").Id("r").Dot("GraphQLSelection").Call().Dot("Select").Call(Lit(spec.loadFromIDGQLFieldName()))
 			g.Id("q").Op("=").Id("q").Dot("Arg").Call(Lit("id"), Id("id"))
 			g.Return(Op("&").Id(spec.concreteStructName()).Values(Dict{
 				Id("q"): Id("q"),
-				Id("c"): Id("r").Dot("c"),
+				Id("c"): Id("r").Dot("GraphQLClient").Call(),
 			}))
 		})
 }

@@ -96,6 +96,11 @@ func (c *Client) GraphQLClient() graphql.Client {
 	return c.c
 }
 
+// GraphQLSelection returns the underlying graphql.Client
+func (c *Client) GraphQLSelection() *querybuilder.Selection {
+	return c.q
+}
+
 // Close the engine connection
 func (c *Client) Close() error {
 	if c.conn != nil {

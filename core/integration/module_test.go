@@ -1753,7 +1753,7 @@ func TestModuleGoExtendCore(t *testing.T) {
 	var logs safeBuffer
 	c, ctx := connect(t, dagger.WithLogOutput(&logs))
 
-	_, err := c.Container().From(golangImage).
+	modGen, err := c.Container().From(golangImage).
 		WithMountedFile(testCLIBinPath, daggerCliFile(t, c)).
 		WithWorkdir("/work").
 		With(daggerExec("mod", "init", "--name=test", "--sdk=go")).
@@ -1769,10 +1769,12 @@ func (c *Container) Echo(ctx context.Context, msg string) (string, error) {
 		}).
 		With(daggerExec("mod", "sync")).
 		Sync(ctx)
+	require.NoError(t, err)
 
+	_, err = modGen.With(daggerQuery(`{container{echo(msg: "foo")}}`)).Sync(ctx)
 	require.Error(t, err)
 	require.NoError(t, c.Close())
-	require.Contains(t, logs.String(), "cannot define methods on objects from outside this module")
+	require.Contains(t, logs.String(), "cannot define new methods on non-local type")
 }
 
 func TestModuleCustomTypes(t *testing.T) {
@@ -2650,7 +2652,7 @@ type Test struct{}
 
 func (m *Test) FnA(ctx context.Context) (string, error) {
 	resp := &graphql.Response{}
-	err := dag.c.MakeRequest(ctx, &graphql.Request{
+	err := dag.GraphQLClient().MakeRequest(ctx, &graphql.Request{
 		Query: "{test{fnB}}",
 	}, resp)
 	if err != nil {
@@ -4000,7 +4002,7 @@ func TestModuleNamespacing(t *testing.T) {
 		With(daggerQuery(`{test{fn(s:"yo")}}`)).
 		Stdout(ctx)
 	require.NoError(t, err)
-	require.JSONEq(t, `{"test":{"fn":["*main.Sub1Obj made 1:yo", "*main.Sub2Obj made 2:yo"]}}`, out)
+	require.JSONEq(t, `{"test":{"fn":["*dagger.Sub1Obj made 1:yo", "*dagger.Sub2Obj made 2:yo"]}}`, out)
 }
 
 func TestModuleRoots(t *testing.T) {
