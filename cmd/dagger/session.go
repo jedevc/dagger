@@ -51,6 +51,10 @@ func EngineSession(cmd *cobra.Command, args []string) error {
 
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
+	defer func() {
+		signal.Stop(signalCh)
+		close(signalCh)
+	}()
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

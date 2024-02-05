@@ -686,6 +686,10 @@ func execProcess(cmd *exec.Cmd, waitForStreams bool) error {
 
 		sigCh := make(chan os.Signal, 32)
 		signal.Notify(sigCh)
+		defer func() {
+			signal.Stop(sigCh)
+			close(sigCh)
+		}()
 		if err := cmd.Start(); err != nil {
 			errCh <- err
 			return
