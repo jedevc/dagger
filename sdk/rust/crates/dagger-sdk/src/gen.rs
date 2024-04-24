@@ -4291,6 +4291,15 @@ impl Module {
             graphql_client: self.graphql_client.clone(),
         }
     }
+    /// Scalars served by this module.
+    pub fn scalars(&self) -> Vec<TypeDef> {
+        let query = self.selection.select("scalars");
+        return vec![TypeDef {
+            proc: self.proc.clone(),
+            selection: query,
+            graphql_client: self.graphql_client.clone(),
+        }];
+    }
     /// The SDK used by this module. Either a name of a builtin SDK or a module source ref string pointing to the SDK's implementation.
     pub async fn sdk(&self) -> Result<String, DaggerError> {
         let query = self.selection.select("sdk");
@@ -4349,6 +4358,22 @@ impl Module {
             Box::new(move || {
                 let object = object.clone();
                 Box::pin(async move { object.id().await.unwrap().quote() })
+            }),
+        );
+        Module {
+            proc: self.proc.clone(),
+            selection: query,
+            graphql_client: self.graphql_client.clone(),
+        }
+    }
+    /// This module plus the given Scalar type.
+    pub fn with_scalar(&self, scalar: TypeDef) -> Module {
+        let mut query = self.selection.select("withScalar");
+        query = query.arg_lazy(
+            "scalar",
+            Box::new(move || {
+                let scalar = scalar.clone();
+                Box::pin(async move { scalar.id().await.unwrap().quote() })
             }),
         );
         Module {

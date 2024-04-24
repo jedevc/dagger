@@ -198,6 +198,9 @@ func (s *moduleSchema) Install() {
 			Doc(`Retrieves the module with the given description`).
 			ArgDoc("description", `The description to set`),
 
+		dagql.Func("withScalar", s.moduleWithScalar).
+			Doc(`This module plus the given Scalar type.`),
+
 		dagql.Func("withObject", s.moduleWithObject).
 			Doc(`This module plus the given Object type and associated functions.`),
 
@@ -522,6 +525,16 @@ func (s *moduleSchema) moduleWithInterface(ctx context.Context, mod *core.Module
 		return nil, err
 	}
 	return mod.WithInterface(ctx, def.Self)
+}
+
+func (s *moduleSchema) moduleWithScalar(ctx context.Context, mod *core.Module, args struct {
+	Scalar core.TypeDefID
+}) (_ *core.Module, rerr error) {
+	def, err := args.Scalar.Load(ctx, s.dag)
+	if err != nil {
+		return nil, err
+	}
+	return mod.WithScalar(ctx, def.Self)
 }
 
 func (s *moduleSchema) currentModuleName(

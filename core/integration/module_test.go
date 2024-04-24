@@ -3438,6 +3438,70 @@ func (t *Toplevel) SayHello(ctx context.Context) (string, error) {
 	require.JSONEq(t, `{"toplevel":{"sayHello":"hello!"}}`, out)
 }
 
+func TestModuleGoCustomScalar(t *testing.T) {
+	t.Parallel()
+
+	var logs safeBuffer
+	c, ctx := connect(t, dagger.WithLogOutput(io.MultiWriter(os.Stdout, &logs)))
+
+	ctr := c.Container().From(golangImage).
+		WithMountedFile(testCLIBinPath, daggerCliFile(t, c))
+
+	ctr = ctr.
+		WithWorkdir("/toplevel/foo").
+		With(daggerExec("init", "--name=foo", "--sdk=go", "--source=.")).
+		WithNewFile("main.go", dagger.ContainerWithNewFileOpts{
+			Contents: `package main
+			
+import "fmt"
+
+type Foo struct {}
+
+type CustomString string
+type CustomInt int
+type CustomBool bool
+
+func (foo *Foo) Hello(s CustomString, i CustomInt, b CustomBool) string {
+	return fmt.Sprintf("%s %d %t", s, i, b)
+}
+`,
+		})
+	out, err := ctr.With(daggerQuery(`{foo{hello(s: "abc", i: 1, b: true)}}`)).Stdout(ctx)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"foo":{"hello":"abc 1 true"}}`, out)
+
+	ctr = ctr.
+		WithWorkdir("/toplevel").
+		With(daggerExec("init", "--name=toplevel", "--sdk=go", "--source=.")).
+		With(daggerExec("install", "./foo")).
+		WithNewFile("main.go", dagger.ContainerWithNewFileOpts{
+			Contents: `package main
+
+import "context"
+
+type Toplevel struct {}
+
+func (t *Toplevel) Hello(ctx context.Context) (string, error) {
+	return dag.Foo().Hello(ctx, FooCustomString("xyz"), FooCustomInt("2"), FooCustomBool("true"))
+}
+
+func (t *Toplevel) HelloBad(ctx context.Context) (string, error) {
+	return dag.Foo().Hello(ctx, FooCustomString("xyz"), FooCustomInt("2"), FooCustomBool("invalid"))
+}
+`,
+		})
+	logGen(ctx, t, ctr.Directory("."))
+
+	out, err = ctr.With(daggerQuery(`{toplevel{hello}}`)).Stdout(ctx)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"toplevel":{"hello":"xyz 2 true"}}`, out)
+
+	_, err = ctr.With(daggerQuery(`{toplevel{helloBad}}`)).Stdout(ctx)
+	require.Error(t, err)
+	require.NoError(t, c.Close())
+	require.Contains(t, logs.String(), "invalid syntax")
+}
+
 var useInner = `package main
 
 type Dep struct{}

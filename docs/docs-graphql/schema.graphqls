@@ -1751,6 +1751,9 @@ type Module {
   """
   runtime: Container!
 
+  """Scalars served by this module."""
+  scalars: [TypeDef!]!
+
   """
   The SDK used by this module. Either a name of a builtin SDK or a module source
   ref string pointing to the SDK's implementation.
@@ -1779,6 +1782,9 @@ type Module {
 
   """This module plus the given Object type and associated functions."""
   withObject(object: TypeDefID!): Module!
+
+  """This module plus the given Scalar type."""
+  withScalar(scalar: TypeDefID!): Module!
 
   """Retrieves the module with basic configuration loaded if present."""
   withSource(

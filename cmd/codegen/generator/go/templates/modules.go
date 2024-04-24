@@ -151,6 +151,24 @@ func (funcs goTemplateFuncs) moduleMainSrc() (string, error) { //nolint: gocyclo
 			}
 
 			switch underlyingObj := named.Underlying().(type) {
+			case *types.Basic:
+				if ps.isDaggerGenerated(obj) {
+					break
+				}
+
+				typeSpec, err := ps.parseGoTypeReference(underlyingObj, named, false)
+				if err != nil {
+					return "", err
+				}
+
+				// Add the scalar to the module
+				scalarTypeDefCode, err := typeSpec.TypeDefCode()
+				if err != nil {
+					return "", fmt.Errorf("failed to generate type def code for %s: %w", obj.Name(), err)
+				}
+				createMod = dotLine(createMod, "WithScalar").Call(Add(Line(), scalarTypeDefCode))
+				added[obj.Name()] = struct{}{}
+
 			case *types.Struct:
 				strct := underlyingObj
 				objTypeSpec, err := ps.parseGoStruct(strct, named)

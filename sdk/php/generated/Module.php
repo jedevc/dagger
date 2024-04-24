@@ -113,6 +113,15 @@ class Module extends Client\AbstractObject implements Client\IdAble
     }
 
     /**
+     * Scalars served by this module.
+     */
+    public function scalars(): array
+    {
+        $leafQueryBuilder = new \Dagger\Client\QueryBuilder('scalars');
+        return (array)$this->queryLeaf($leafQueryBuilder, 'scalars');
+    }
+
+    /**
      * The SDK used by this module. Either a name of a builtin SDK or a module source ref string pointing to the SDK's implementation.
      */
     public function sdk(): string
@@ -168,6 +177,16 @@ class Module extends Client\AbstractObject implements Client\IdAble
     {
         $innerQueryBuilder = new \Dagger\Client\QueryBuilder('withObject');
         $innerQueryBuilder->setArgument('object', $object);
+        return new \Dagger\Module($this->client, $this->queryBuilderChain->chain($innerQueryBuilder));
+    }
+
+    /**
+     * This module plus the given Scalar type.
+     */
+    public function withScalar(TypeDefId|TypeDef $scalar): Module
+    {
+        $innerQueryBuilder = new \Dagger\Client\QueryBuilder('withScalar');
+        $innerQueryBuilder->setArgument('scalar', $scalar);
         return new \Dagger\Module($this->client, $this->queryBuilderChain->chain($innerQueryBuilder));
     }
 

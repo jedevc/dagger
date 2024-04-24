@@ -49,6 +49,32 @@ func (t *PrimitiveType) TypeDef() *TypeDef {
 	return t.Def
 }
 
+// ModuleScalarType is an arbitrary scalar type.
+type ModuleScalarType struct {
+	Def *TypeDef
+	Mod *Module
+}
+
+func (t *ModuleScalarType) ConvertFromSDKResult(ctx context.Context, value any) (dagql.Typed, error) {
+	// NB: we lean on the fact that all primitive types are also dagql.Inputs
+	return t.Def.ToInput().Decoder().DecodeInput(value)
+}
+
+func (t *ModuleScalarType) ConvertToSDKInput(ctx context.Context, value dagql.Typed) (any, error) {
+	return value, nil
+}
+
+func (t *ModuleScalarType) SourceMod() Mod {
+	if t.Mod == nil {
+		return nil
+	}
+	return t.Mod
+}
+
+func (t *ModuleScalarType) TypeDef() *TypeDef {
+	return t.Def
+}
+
 type ListType struct {
 	Elem       *TypeDef
 	Underlying ModType

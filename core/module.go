@@ -58,6 +58,9 @@ type Module struct {
 	// The module's interfaces
 	InterfaceDefs []*TypeDef `field:"true" name:"interfaces" doc:"Interfaces served by this module."`
 
+	// The module's scalars
+	ScalarDefs []*TypeDef `field:"true" name:"scalars" doc:"Scalars served by this module."`
+
 	// InstanceID is the ID of the initialized module.
 	InstanceID *call.ID
 }
@@ -161,6 +164,12 @@ func (mod *Module) Initialize(ctx context.Context, oldSelf dagql.Instance[*Modul
 			return nil, fmt.Errorf("failed to add interface to module %q: %w", mod.Name(), err)
 		}
 	}
+	for _, scalar := range inst.Self.ScalarDefs {
+		newMod, err = newMod.WithScalar(ctx, scalar)
+		if err != nil {
+			return nil, fmt.Errorf("failed to add scalar to module %q: %w", mod.Name(), err)
+		}
+	}
 	newMod.InstanceID = newID
 
 	return newMod, nil
@@ -215,6 +224,25 @@ func (mod *Module) Install(ctx context.Context, dag *dagql.Server) error {
 		}
 	}
 
+	for _, def := range mod.ScalarDefs {
+		scalarDef := def.AsScalar.Value
+
+		slog.ExtraDebug("installing scalar", "name", mod.Name(), "scalar", scalarDef.Name)
+
+		var sc dagql.ScalarType
+		switch scalarDef.Kind {
+		case TypeDefKindString:
+			sc = dagql.NewScalar[dagql.String](scalarDef.Name, dagql.String(""))
+		case TypeDefKindInteger:
+			sc = dagql.NewScalar[dagql.Int](scalarDef.Name, dagql.Int(0))
+		case TypeDefKindBoolean:
+			sc = dagql.NewScalar[dagql.Boolean](scalarDef.Name, dagql.Boolean(false))
+		default:
+			return fmt.Errorf("unsupported type kind: %s", scalarDef.Kind)
+		}
+		dag.InstallScalar(sc)
+	}
+
 	return nil
 }
 
@@ -231,6 +259,13 @@ func (mod *Module) TypeDefs(ctx context.Context) ([]*TypeDef, error) {
 		typeDef := def.Clone()
 		if typeDef.AsInterface.Valid {
 			typeDef.AsInterface.Value.SourceModuleName = mod.Name()
+		}
+		typeDefs = append(typeDefs, typeDef)
+	}
+	for _, def := range mod.ScalarDefs {
+		typeDef := def.Clone()
+		if typeDef.AsScalar.Valid {
+			typeDef.AsScalar.Value.SourceModuleName = mod.Name()
 		}
 		typeDefs = append(typeDefs, typeDef)
 	}
@@ -330,8 +365,19 @@ func (mod *Module) ModTypeFor(ctx context.Context, typeDef *TypeDef, checkDirect
 			}
 		}
 
-		slog.ExtraDebug("module did not find scalar", "mod", mod.Name(), "scalar", typeDef.AsScalar.Value.Name)
-		return nil, false, nil
+		var found bool
+		// otherwise it must be from this module
+		for _, obj := range mod.ScalarDefs {
+			if obj.AsScalar.Value.Name == typeDef.AsScalar.Value.Name {
+				modType = &ModuleScalarType{typeDef, mod}
+				found = true
+				break
+			}
+		}
+		if !found {
+			slog.ExtraDebug("module did not find scalar", "mod", mod.Name(), "scalar", typeDef.AsScalar.Value.Name)
+			return nil, false, nil
+		}
 
 	default:
 		return nil, false, fmt.Errorf("unexpected type def kind %s", typeDef.Kind)
@@ -485,6 +531,7 @@ func (mod *Module) namespaceTypeDef(ctx context.Context, typeDef *TypeDef) error
 		if err := mod.namespaceTypeDef(ctx, typeDef.AsList.Value.ElementTypeDef); err != nil {
 			return err
 		}
+
 	case TypeDefKindObject:
 		obj := typeDef.AsObject.Value
 
@@ -514,6 +561,7 @@ func (mod *Module) namespaceTypeDef(ctx context.Context, typeDef *TypeDef) error
 				}
 			}
 		}
+
 	case TypeDefKindInterface:
 		iface := typeDef.AsInterface.Value
 
@@ -536,6 +584,16 @@ func (mod *Module) namespaceTypeDef(ctx context.Context, typeDef *TypeDef) error
 					return err
 				}
 			}
+		}
+
+	case TypeDefKindScalar:
+		scalar := typeDef.AsScalar.Value
+		_, ok, err := mod.Deps.ModTypeFor(ctx, typeDef)
+		if err != nil {
+			return fmt.Errorf("failed to get mod type for type def: %w", err)
+		}
+		if !ok {
+			scalar.Name = namespaceObject(scalar.OriginalName, mod.Name(), mod.OriginalName)
 		}
 	}
 	return nil
@@ -644,6 +702,11 @@ func (mod Module) Clone() *Module {
 		cp.InterfaceDefs[i] = def.Clone()
 	}
 
+	cp.ScalarDefs = make([]*TypeDef, len(mod.ScalarDefs))
+	for i, def := range mod.ScalarDefs {
+		cp.ScalarDefs[i] = def.Clone()
+	}
+
 	return &cp
 }
 
@@ -700,6 +763,31 @@ func (mod *Module) WithInterface(ctx context.Context, def *TypeDef) (*Module, er
 	}
 
 	mod.InterfaceDefs = append(mod.InterfaceDefs, def)
+	return mod, nil
+}
+
+func (mod *Module) WithScalar(ctx context.Context, def *TypeDef) (*Module, error) {
+	mod = mod.Clone()
+	if !def.AsScalar.Valid {
+		return nil, fmt.Errorf("expected scalar def, got %s: %+v", def.Kind, def)
+	}
+
+	// skip validation+namespacing for module objects being constructed by SDK with* calls
+	// they will be validated when merged into the real final module
+
+	if mod.Deps != nil {
+		if err := mod.validateTypeDef(ctx, def); err != nil {
+			return nil, fmt.Errorf("failed to validate type def: %w", err)
+		}
+	}
+	if mod.NameField != "" {
+		def = def.Clone()
+		if err := mod.namespaceTypeDef(ctx, def); err != nil {
+			return nil, fmt.Errorf("failed to namespace type def: %w", err)
+		}
+	}
+
+	mod.ScalarDefs = append(mod.ScalarDefs, def)
 	return mod, nil
 }
 

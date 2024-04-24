@@ -851,6 +851,8 @@ query TypeDefs {
 	modDef := &moduleDef{Name: name}
 	for _, typeDef := range res.TypeDefs {
 		switch typeDef.Kind {
+		case dagger.ScalarKind:
+			modDef.Scalars = append(modDef.Scalars, typeDef)
 		case dagger.ObjectKind:
 			modDef.Objects = append(modDef.Objects, typeDef)
 		case dagger.InterfaceKind:
@@ -865,6 +867,7 @@ query TypeDefs {
 // moduleDef is a representation of dagger.Module.
 type moduleDef struct {
 	Name       string
+	Scalars    []*modTypeDef
 	Objects    []*modTypeDef
 	Interfaces []*modTypeDef
 	Inputs     []*modTypeDef

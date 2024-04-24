@@ -4398,6 +4398,39 @@ func (r *Module) Runtime() *Container {
 	}
 }
 
+// Scalars served by this module.
+func (r *Module) Scalars(ctx context.Context) ([]TypeDef, error) {
+	q := r.query.Select("scalars")
+
+	q = q.Select("id")
+
+	type scalars struct {
+		Id TypeDefID
+	}
+
+	convert := func(fields []scalars) []TypeDef {
+		out := []TypeDef{}
+
+		for i := range fields {
+			val := TypeDef{id: &fields[i].Id}
+			val.query = q.Root().Select("loadTypeDefFromID").Arg("id", fields[i].Id)
+			out = append(out, val)
+		}
+
+		return out
+	}
+	var response []scalars
+
+	q = q.Bind(&response)
+
+	err := q.Execute(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return convert(response), nil
+}
+
 // The SDK used by this module. Either a name of a builtin SDK or a module source ref string pointing to the SDK's implementation.
 func (r *Module) SDK(ctx context.Context) (string, error) {
 	if r.sdk != nil {
@@ -4461,6 +4494,17 @@ func (r *Module) WithObject(object *TypeDef) *Module {
 	assertNotNil("object", object)
 	q := r.query.Select("withObject")
 	q = q.Arg("object", object)
+
+	return &Module{
+		query: q,
+	}
+}
+
+// This module plus the given Scalar type.
+func (r *Module) WithScalar(scalar *TypeDef) *Module {
+	assertNotNil("scalar", scalar)
+	q := r.query.Select("withScalar")
+	q = q.Arg("scalar", scalar)
 
 	return &Module{
 		query: q,

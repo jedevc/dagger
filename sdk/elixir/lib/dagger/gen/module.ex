@@ -165,6 +165,26 @@ defmodule Dagger.Module do
     }
   end
 
+  @doc "Scalars served by this module."
+  @spec scalars(t()) :: {:ok, [Dagger.TypeDef.t()]} | {:error, term()}
+  def scalars(%__MODULE__{} = module) do
+    selection =
+      module.selection |> select("scalars") |> select("id")
+
+    with {:ok, items} <- execute(selection, module.client) do
+      {:ok,
+       for %{"id" => id} <- items do
+         %Dagger.TypeDef{
+           selection:
+             query()
+             |> select("loadTypeDefFromID")
+             |> arg("id", id),
+           client: module.client
+         }
+       end}
+    end
+  end
+
   @doc "The SDK used by this module. Either a name of a builtin SDK or a module source ref string pointing to the SDK's implementation."
   @spec sdk(t()) :: {:ok, String.t()} | {:error, term()}
   def sdk(%__MODULE__{} = module) do
@@ -228,6 +248,18 @@ defmodule Dagger.Module do
   def with_object(%__MODULE__{} = module, object) do
     selection =
       module.selection |> select("withObject") |> put_arg("object", Dagger.ID.id!(object))
+
+    %Dagger.Module{
+      selection: selection,
+      client: module.client
+    }
+  end
+
+  @doc "This module plus the given Scalar type."
+  @spec with_scalar(t(), Dagger.TypeDef.t()) :: Dagger.Module.t()
+  def with_scalar(%__MODULE__{} = module, scalar) do
+    selection =
+      module.selection |> select("withScalar") |> put_arg("scalar", Dagger.ID.id!(scalar))
 
     %Dagger.Module{
       selection: selection,

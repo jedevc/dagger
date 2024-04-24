@@ -4424,6 +4424,27 @@ class Module(Type):
         _ctx = self._select("runtime", _args)
         return Container(_ctx)
 
+    async def scalars(self) -> list["TypeDef"]:
+        """Scalars served by this module."""
+        _args: list[Arg] = []
+        _ctx = self._select("scalars", _args)
+        _ctx = TypeDef(_ctx)._select("id", [])
+
+        @dataclass
+        class Response:
+            id: TypeDefID
+
+        _ids = await _ctx.execute(list[Response])
+        return [
+            TypeDef(
+                Client.from_context(_ctx)._select(
+                    "loadTypeDefFromID",
+                    [Arg("id", v.id)],
+                )
+            )
+            for v in _ids
+        ]
+
     async def sdk(self) -> str:
         """The SDK used by this module. Either a name of a builtin SDK or a
         module source ref string pointing to the SDK's implementation.
@@ -4503,6 +4524,14 @@ class Module(Type):
             Arg("object", object),
         ]
         _ctx = self._select("withObject", _args)
+        return Module(_ctx)
+
+    def with_scalar(self, scalar: "TypeDef") -> Self:
+        """This module plus the given Scalar type."""
+        _args = [
+            Arg("scalar", scalar),
+        ]
+        _ctx = self._select("withScalar", _args)
         return Module(_ctx)
 
     def with_source(self, source: "ModuleSource") -> Self:
