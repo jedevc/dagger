@@ -69,6 +69,7 @@ func (ps *parseState) parseGoTypeReference(typ types.Type, named *types.Named, i
 		}
 		parsedType := &parsedPrimitiveType{goType: t, isPtr: isPtr}
 		if named != nil {
+			parsedType.aliasType = named
 			parsedType.alias = named.Obj().Name()
 		}
 		return parsedType, nil
@@ -121,7 +122,8 @@ type parsedPrimitiveType struct {
 	isPtr  bool
 
 	// if this is something like `type Foo string`, then alias will be "Foo"
-	alias string
+	alias     string
+	aliasType *types.Named
 }
 
 var _ ParsedType = &parsedPrimitiveType{}
@@ -138,9 +140,12 @@ func (spec *parsedPrimitiveType) TypeDefCode() (*Statement, error) {
 	default:
 		return nil, fmt.Errorf("unsupported basic type: %+v", spec.goType)
 	}
-	def := Qual("dag", "TypeDef").Call().Dot("WithKind").Call(
-		kind,
-	)
+	var def *Statement
+	if spec.alias == "" {
+		def = Qual("dag", "TypeDef").Call().Dot("WithKind").Call(kind)
+	} else {
+		def = Qual("dag", "TypeDef").Call().Dot("WithScalar").Call(kind, Lit(spec.alias))
+	}
 	if spec.isPtr {
 		def = def.Dot("WithOptional").Call(Lit(true))
 	}
@@ -152,6 +157,9 @@ func (spec *parsedPrimitiveType) GoType() types.Type {
 }
 
 func (spec *parsedPrimitiveType) GoSubTypes() []types.Type {
+	if spec.aliasType != nil {
+		return []types.Type{spec.aliasType}
+	}
 	return nil
 }
 

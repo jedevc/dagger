@@ -615,6 +615,29 @@ func (r *modFunctionArg) AddFlag(flags *pflag.FlagSet, dag *dagger.Client) (any,
 		val, _ := getDefaultValue[bool](r)
 		return flags.Bool(name, val, usage), nil
 
+	case dagger.ScalarKind:
+		scalar := r.TypeDef.AsScalar
+		scalarName := scalar.Name
+
+		if val := GetCustomFlagValue(scalarName); val != nil {
+			flags.Var(val, name, usage)
+			return val, nil
+		}
+
+		switch scalar.Kind {
+		case dagger.StringKind:
+			val, _ := getDefaultValue[string](r)
+			return flags.String(name, val, usage), nil
+		case dagger.IntegerKind:
+			val, _ := getDefaultValue[int](r)
+			return flags.Int(name, val, usage), nil
+		case dagger.BooleanKind:
+			val, _ := getDefaultValue[bool](r)
+			return flags.Bool(name, val, usage), nil
+		}
+
+		return nil, fmt.Errorf("unsupported scalar kind %q for flag: %s", scalar.Kind, name)
+
 	case dagger.ObjectKind:
 		objName := r.TypeDef.AsObject.Name
 
@@ -652,6 +675,29 @@ func (r *modFunctionArg) AddFlag(flags *pflag.FlagSet, dag *dagger.Client) (any,
 		case dagger.BooleanKind:
 			val, _ := getDefaultValue[[]bool](r)
 			return flags.BoolSlice(name, val, usage), nil
+
+		case dagger.ScalarKind:
+			scalar := r.TypeDef.AsScalar
+			scalarName := scalar.Name
+
+			if val := GetCustomFlagValueSlice(scalarName); val != nil {
+				flags.Var(val, name, usage)
+				return val, nil
+			}
+
+			switch scalar.Kind {
+			case dagger.StringKind:
+				val, _ := getDefaultValue[[]string](r)
+				return flags.StringSlice(name, val, usage), nil
+			case dagger.IntegerKind:
+				val, _ := getDefaultValue[[]int](r)
+				return flags.IntSlice(name, val, usage), nil
+			case dagger.BooleanKind:
+				val, _ := getDefaultValue[[]bool](r)
+				return flags.BoolSlice(name, val, usage), nil
+			}
+
+			return nil, fmt.Errorf("unsupported scalar kind %q for flag: %s", scalar.Kind, name)
 
 		case dagger.ObjectKind:
 			objName := elementType.AsObject.Name
