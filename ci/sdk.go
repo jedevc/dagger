@@ -61,6 +61,10 @@ func (ci *Dagger) installer(ctx context.Context, name string) (func(*Container) 
 	if err != nil {
 		return nil, err
 	}
+	engineHost, err := engineSvc.Hostname(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	cliBinary, err := ci.CLI().File(ctx, "")
 	if err != nil {
@@ -72,6 +76,7 @@ func (ci *Dagger) installer(ctx context.Context, name string) (func(*Container) 
 		ctr = ctr.
 			WithServiceBinding("dagger-engine", engineSvc).
 			WithEnvVariable("_EXPERIMENTAL_DAGGER_RUNNER_HOST", engineEndpoint).
+			WithEnvVariable("MYHOST", engineHost).
 			WithMountedFile(cliBinaryPath, cliBinary).
 			WithEnvVariable("_EXPERIMENTAL_DAGGER_CLI_BIN", cliBinaryPath).
 			WithExec([]string{"ln", "-s", cliBinaryPath, "/usr/local/bin/dagger"})
