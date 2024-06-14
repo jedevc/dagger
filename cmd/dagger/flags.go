@@ -187,7 +187,7 @@ func (v *enumValue) Get(ctx context.Context, c *dagger.Client, modSrc *dagger.Mo
 func (v *enumValue) Set(s string) error {
 	for _, allow := range v.typedef.Values {
 		if strings.EqualFold(s, allow.Name) {
-			v.value = s
+			v.value = allow.Name
 			return nil
 		}
 	}
