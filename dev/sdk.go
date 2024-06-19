@@ -37,6 +37,8 @@ type sdkBase interface {
 	Lint(ctx context.Context) error
 	Test(ctx context.Context) error
 	Generate(ctx context.Context) (*dagger.Directory, error)
+
+	// Deprecated: this should now be included in the Publish step
 	Bump(ctx context.Context, version string) (*dagger.Directory, error)
 }
 

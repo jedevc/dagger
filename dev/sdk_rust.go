@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"golang.org/x/sync/errgroup"
@@ -22,7 +21,13 @@ const (
 )
 
 type RustSDK struct {
-	Dagger *DaggerDev // +private
+	Dagger  *DaggerDev // +private
+	Version string
+}
+
+func (r RustSDK) withVersion(version string) RustSDK {
+	r.Version = version
+	return r
 }
 
 // Lint the Rust SDK
@@ -101,20 +106,22 @@ func (r RustSDK) Publish(
 	cargoRegistryToken *dagger.Secret,
 ) error {
 	version := strings.TrimPrefix(tag, "sdk/rust/v")
+	versionArg := version
 	if dryRun {
 		// just pick any version, it's a dry-run
-		version = "--bump=rc"
+		versionArg = "--bump=rc"
 	}
 
 	crate := "dagger-sdk"
 
 	base := r.
+		withVersion(version).
 		rustBase(rustDockerStable).
 		WithExec([]string{
 			"cargo", "install", "cargo-edit", "--locked",
 		}).
 		WithExec([]string{
-			"cargo", "set-version", "-p", crate, version,
+			"cargo", "set-version", "-p", crate, versionArg,
 		})
 	args := []string{
 		"cargo", "publish", "-p", crate, "-v", "--all-features",
@@ -134,33 +141,21 @@ func (r RustSDK) Publish(
 }
 
 // Bump the Rust SDK's Engine dependency
-func (r RustSDK) Bump(ctx context.Context, version string) (*dagger.Directory, error) {
-	versionStr := `pub const DAGGER_ENGINE_VERSION: &'static str = "([0-9\.-a-zA-Z]+)";`
-	versionStrf := `pub const DAGGER_ENGINE_VERSION: &'static str = "%s";`
-	version = strings.TrimPrefix(version, "v")
-
-	versionContents, err := r.Dagger.Source().File(rustVersionFilePath).Contents(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	versionRe, err := regexp.Compile(versionStr)
-	if err != nil {
-		return nil, err
-	}
-
-	versionBumpedContents := versionRe.ReplaceAllString(
-		versionContents,
-		fmt.Sprintf(versionStrf, version),
-	)
-
-	return dag.Directory().WithNewFile(rustVersionFilePath, versionBumpedContents), nil
+//
+// Deprecated: this is now included in the Publish step
+func (r RustSDK) Bump(
+	ctx context.Context,
+	// +optional
+	version string,
+) (*dagger.Directory, error) {
+	result := bumpSDK("rust", version, r.Dagger.Source())
+	return r.Dagger.Source().Diff(result), nil
 }
 
 func (r RustSDK) rustBase(image string) *dagger.Container {
 	const appDir = "sdk/rust"
 
-	src := dag.Directory().WithDirectory("/", r.Dagger.Source().Directory(appDir))
+	src := bumpSDK("rust", r.Version, r.Dagger.Source()).Directory(appDir)
 
 	mountPath := fmt.Sprintf("/%s", appDir)
 

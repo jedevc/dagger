@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"golang.org/x/sync/errgroup"
@@ -26,7 +25,13 @@ const (
 )
 
 type ElixirSDK struct {
-	Dagger *DaggerDev // +private
+	Dagger  *DaggerDev // +private
+	Version string     // +private
+}
+
+func (t ElixirSDK) withVersion(version string) ElixirSDK {
+	t.Version = version
+	return t
 }
 
 // Lint the Elixir SDK
@@ -103,7 +108,7 @@ func (t ElixirSDK) Publish(
 		mixFile = "/sdk/elixir/mix.exs"
 	)
 
-	ctr := t.elixirBase(elixirVersions[1])
+	ctr := t.withVersion(version).elixirBase(elixirVersions[1])
 
 	if !dryRun {
 		mixExs, err := t.Dagger.Source().File(mixFile).Contents(ctx)
@@ -128,23 +133,20 @@ func (t ElixirSDK) Publish(
 	return err
 }
 
-var elixirVersionRe = regexp.MustCompile(`@dagger_cli_version "([0-9\.-a-zA-Z]+)"`)
-
 // Bump the Elixir SDK's Engine dependency
-func (t ElixirSDK) Bump(ctx context.Context, version string) (*dagger.Directory, error) {
-	contents, err := t.Dagger.Source().File(elixirSDKVersionFilePath).Contents(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	newVersion := fmt.Sprintf(`@dagger_cli_version "%s"`, strings.TrimPrefix(version, "v"))
-	newContents := elixirVersionRe.ReplaceAllString(contents, newVersion)
-
-	return dag.Directory().WithNewFile(elixirSDKVersionFilePath, newContents), nil
+//
+// Deprecated: this is now included in the Publish step
+func (t ElixirSDK) Bump(
+	ctx context.Context,
+	// +optional
+	version string,
+) (*dagger.Directory, error) {
+	result := bumpSDK("elixir", version, t.Dagger.Source())
+	return t.Dagger.Source().Diff(result), nil
 }
 
 func (t ElixirSDK) elixirBase(elixirVersion string) *dagger.Container {
-	src := t.Dagger.Source().Directory(elixirSDKPath)
+	src := bumpSDK("elixir", t.Version, t.Dagger.Source()).Directory(elixirSDKPath)
 	mountPath := "/" + elixirSDKPath
 
 	return dag.Container().
