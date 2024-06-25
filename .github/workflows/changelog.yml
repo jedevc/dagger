@@ -21,6 +21,7 @@ jobs:
         id: check
         run: |
           set -x
+          shopt -s globstar
 
           diff=$(git diff --name-only origin/$GITHUB_BASE_REF...origin/$GITHUB_HEAD_REF -- **/.changes/unreleased)
           diffReturn=$?
@@ -29,7 +30,7 @@ jobs:
           fi
 
           if [ -z "$diff" ]; then
-            echo .Changelog is required, but was not created. Run `changie new` to generate one..
+            echo 'Changelog is required, but was not created. Run `changie new` to generate one.'
             exit 1
           else
             echo "Changelog exists"
