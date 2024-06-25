@@ -13,14 +13,26 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'needs/changelog')
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Check if PR needs a changelog
         id: check
         run: |
-          if [ -z "$(git diff --name-only $GITHUB_HEAD_REF...$GITHUB_REF -- **/.changes/unreleased)" ]; then
-            echo "Changelog exists"
-          else
-            echo "Changelog is required, but was not created. Run `changie new` to generate one."
+          set -x
+
+          diff=$(git diff --name-only origin/$GITHUB_BASE_REF...origin/$GITHUB_HEAD_REF -- **/.changes/unreleased)
+          diffReturn=$?
+          if [ $diffReturn -ne 0 ]; then
+            exit $diffReturn
+          fi
+
+          if [ -z "$diff" ]; then
+            echo .Changelog is required, but was not created. Run `changie new` to generate one..
             exit 1
+          else
+            echo "Changelog exists"
           fi
 
       - name: Add comment
