@@ -1,0 +1,33 @@
+name: needs/changelog
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - labeled
+      - unlabeled
+
+jobs:
+  check-for-changelog:
+    if: contains(github.event.pull_request.labels.*.name, 'needs/changelog')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if PR needs a changelog
+        id: check
+        run: |
+          if [ -z "$(git diff --name-only $GITHUB_HEAD_REF...$GITHUB_REF -- **/.changes/unreleased)" ]; then
+            echo "Changelog exists"
+          else
+            echo "Changelog is required, but was not created. Run `changie new` to generate one."
+            exit 1
+          fi
+
+      - name: Add comment
+        uses: thollander/actions-comment-pull-request@v2
+        if: always() && github.event.action == 'labeled' && steps.check.outcome != 'success'
+        with:
+          message: |
+            This PR has been marked with `needs/changelog`, but no changelog has been created.
+
+            Run `changie new` to generate one.
