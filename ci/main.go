@@ -154,6 +154,9 @@ func (ci *Dagger) Helm() *Helm {
 // Creates a dev container that has a running CLI connected to a dagger engine
 func (ci *Dagger) Dev(
 	ctx context.Context,
+	// Run a command in the dev container
+	// +optional
+	cmd *string,
 	// Mount a directory into the container's workdir, for convenience
 	// +optional
 	target *Directory,
@@ -184,11 +187,15 @@ func (ci *Dagger) Dev(
 		return nil, err
 	}
 
-	return ci.Go().Env().
+	ctr := ci.Go().Env().
 		WithMountedDirectory("/mnt", target).
 		WithMountedFile("/usr/bin/dagger", client).
 		WithEnvVariable("_EXPERIMENTAL_DAGGER_CLI_BIN", "/usr/bin/dagger").
 		WithServiceBinding("dagger-engine", svc).
 		WithEnvVariable("_EXPERIMENTAL_DAGGER_RUNNER_HOST", endpoint).
-		WithWorkdir("/mnt"), nil
+		WithWorkdir("/mnt")
+	if cmd != nil {
+		ctr = ctr.WithExec([]string{"sh", "-c", *cmd})
+	}
+	return ctr, nil
 }
