@@ -194,6 +194,10 @@ func (ci *Dagger) Dev(
 		WithServiceBinding("dagger-engine", svc).
 		WithEnvVariable("_EXPERIMENTAL_DAGGER_RUNNER_HOST", endpoint).
 		WithWorkdir("/mnt")
+	if ci.HostDockerConfig != nil {
+		// this avoids rate limiting in our dev engine
+		ctr = ctr.WithMountedSecret("/root/.docker/config.json", ci.HostDockerConfig)
+	}
 	if cmd != nil {
 		ctr = ctr.WithExec([]string{"sh", "-c", *cmd})
 	}
