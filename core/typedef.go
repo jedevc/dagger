@@ -589,6 +589,11 @@ func (*ObjectTypeDef) TypeDescription() string {
 	return "A definition of a custom object defined in a Module."
 }
 
+func (typeDef *ObjectTypeDef) ToTyped() dagql.Typed {
+	// XXX: all typedefs should implement this hm
+	return &ModuleObject{TypeDef: typeDef}
+}
+
 func NewObjectTypeDef(name, description string) *ObjectTypeDef {
 	return &ObjectTypeDef{
 		Name:         strcase.ToCamel(name),

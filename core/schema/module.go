@@ -932,6 +932,34 @@ func (s *moduleSchema) updateCodegenAndRuntime(
 		return fmt.Errorf("failed to load sdk for module: %w", err)
 	}
 
+	// XXX: does this *need* mod.Deps? mebbe not
+	// typedefs, err := sdk.TypeDefs(ctx, mod.Deps, src)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to generate code: %w", err)
+	// }
+	// self := mod.Clone()
+	// self.NameField = "self" // ...hm is this riiiight?
+	// for _, typedef := range typedefs {
+	// 	switch typedef.Kind {
+	// 	case core.TypeDefKindObject:
+	// 		self, err = self.WithObject(ctx, typedef)
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 	case core.TypeDefKindInterface:
+	// 		self, err = self.WithInterface(ctx, typedef)
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 	case core.TypeDefKindEnum:
+	// 		self, err = self.WithEnum(ctx, typedef)
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 	}
+	// }
+	// deps := mod.Deps.Append(self)
+
 	generatedCode, err := sdk.Codegen(ctx, mod.Deps, src)
 	if err != nil {
 		return fmt.Errorf("failed to generate code: %w", err)

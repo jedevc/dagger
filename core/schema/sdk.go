@@ -217,6 +217,11 @@ func (sdk *moduleSDK) Runtime(ctx context.Context, deps *core.ModDeps, source da
 	return inst.Self, nil
 }
 
+// Codegen calls the Codegen function on the SDK Module
+func (sdk *moduleSDK) TypeDefs(ctx context.Context, deps *core.ModDeps, source dagql.Instance[*core.ModuleSource]) ([]*core.TypeDef, error) {
+	return nil, nil
+}
+
 func (sdk *moduleSDK) RequiredPaths(ctx context.Context) ([]string, error) {
 	var paths []string
 	err := sdk.dag.Select(ctx, sdk.sdk, &paths,
@@ -395,6 +400,14 @@ func (sdk *goSDK) Runtime(
 		return nil, fmt.Errorf("failed to exec go build in go module sdk container runtime: %w", err)
 	}
 	return ctr.Self, nil
+}
+
+func (sdk *goSDK) TypeDefs(
+	ctx context.Context,
+	deps *core.ModDeps,
+	source dagql.Instance[*core.ModuleSource],
+) ([]*core.TypeDef, error) {
+	return nil, nil
 }
 
 func (sdk *goSDK) RequiredPaths(_ context.Context) ([]string, error) {
