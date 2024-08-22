@@ -157,7 +157,9 @@ func (t *Test) testCmd(ctx context.Context) (*dagger.Container, error) {
 	engine := t.Dagger.Engine().
 		WithConfig(`registry."registry:5000"`, `http = true`).
 		WithConfig(`registry."privateregistry:5000"`, `http = true`).
-		WithConfig(`registry."docker.io"`, `mirrors = ["mirror.gcr.io"]`).
+		// WithConfig(`registry."docker.io"`, `mirrors = ["mirror.gcr.io"]`).
+		WithConfig(`registry."docker.io"`, `mirrors = ["mirror.dagger.test:5000"]`).
+		WithConfig(`registry."mirror.dagger.test:5000"`, `http = true`).
 		WithConfig(`grpc`, `address=["unix:///var/run/buildkit/buildkitd.sock", "tcp://0.0.0.0:1234"]`).
 		WithArg(`network-name`, `dagger-dev`).
 		WithArg(`network-cidr`, `10.88.0.0/16`).
@@ -185,10 +187,16 @@ func (t *Test) testCmd(ctx context.Context) (*dagger.Container, error) {
 			Permissions: 0755,
 		})
 
+	mirror, err := t.setupMirror(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	registrySvc := registry()
 	devEngineSvc := devEngine.
 		WithServiceBinding("registry", registrySvc).
 		WithServiceBinding("privateregistry", privateRegistry()).
+		WithServiceBinding("mirror.dagger.test", mirror).
 		WithExposedPort(1234, dagger.ContainerWithExposedPortOpts{Protocol: dagger.Tcp}).
 		WithMountedCache(distconsts.EngineDefaultStateDir, dag.CacheVolume("dagger-dev-engine-test-state"+identity.NewID())).
 		WithExec(nil, dagger.ContainerWithExecOpts{
