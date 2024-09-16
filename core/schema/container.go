@@ -386,6 +386,7 @@ func (s *containerSchema) Install() {
 			ArgDoc("redirectStderr",
 				`Redirect the command's standard error to a file in the container (e.g.,
 			"/tmp/stderr").`).
+			ArgDoc("validExitCodes", `Exit codes this command is allowed to exit with without error`).
 			ArgDoc("experimentalPrivilegedNesting",
 				`Provides Dagger access to the executed command.`,
 				`Do not use this option unless you trust the command being executed;
@@ -424,6 +425,7 @@ func (s *containerSchema) Install() {
 			ArgDoc("redirectStderr",
 				`Redirect the command's standard error to a file in the container (e.g.,
 			"/tmp/stderr").`).
+			ArgDoc("validExitCodes", `Exit codes this command is allowed to exit with without error`).
 			ArgDoc("experimentalPrivilegedNesting",
 				`Provides Dagger access to the executed command.`,
 				`Do not use this option unless you trust the command being executed;
@@ -453,6 +455,7 @@ func (s *containerSchema) Install() {
 			ArgDoc("redirectStderr",
 				`Redirect the command's standard error to a file in the container (e.g.,
 			"/tmp/stderr").`).
+			ArgDoc("validExitCodes", `Exit codes this command is allowed to exit with without error`).
 			ArgDoc("experimentalPrivilegedNesting",
 				`Provides Dagger access to the executed command.`,
 				`Do not use this option unless you trust the command being executed;
@@ -824,6 +827,9 @@ type containerExecArgsLegacy struct {
 	// Redirect the command's standard error to a file in the container
 	RedirectStderr string `default:""`
 
+	// Exit codes this exec is allowed to exit with
+	ValidExitCodes []int `default:"[]"`
+
 	// Provide the executed command access back to the Dagger API
 	ExperimentalPrivilegedNesting bool `default:"false"`
 
@@ -841,6 +847,7 @@ func (s *containerSchema) withExecLegacy(ctx context.Context, parent *core.Conta
 		Stdin:                         args.Stdin,
 		RedirectStdout:                args.RedirectStdout,
 		RedirectStderr:                args.RedirectStderr,
+		ValidExitCodes:                args.ValidExitCodes,
 		ExperimentalPrivilegedNesting: args.ExperimentalPrivilegedNesting,
 		InsecureRootCapabilities:      args.InsecureRootCapabilities,
 		NestedExecMetadata:            args.NestedExecMetadata,
