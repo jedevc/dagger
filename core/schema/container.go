@@ -488,6 +488,10 @@ func (s *containerSchema) Install() {
 			Doc(`The error stream of the last executed command.`,
 				`Will execute default command if none is set, or error if there's no default.`),
 
+		dagql.Func("exitCode", s.exitCode).
+			Doc(`The exit code of the last executed command.`,
+				`Will execute default command if none is set, or error if there's no default.`),
+
 		dagql.Func("withAnnotation", s.withAnnotation).
 			Doc(`Retrieves this container plus the given OCI anotation.`).
 			ArgDoc("name", `The name of the annotation.`).
@@ -861,6 +865,10 @@ func (s *containerSchema) stdout(ctx context.Context, parent *core.Container, _ 
 
 func (s *containerSchema) stderr(ctx context.Context, parent *core.Container, _ struct{}) (string, error) {
 	return parent.Stderr(ctx)
+}
+
+func (s *containerSchema) exitCode(ctx context.Context, parent *core.Container, _ struct{}) (int, error) {
+	return parent.ExitCode(ctx)
 }
 
 func (s *containerSchema) stdoutLegacy(ctx context.Context, parent *core.Container, _ struct{}) (string, error) {
