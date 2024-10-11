@@ -187,6 +187,17 @@ func (fc *FuncCommand) Command() *cobra.Command {
 						return Fail
 					}
 
+					Frontend.Background(&terminalSession{
+						fn: func(r io.Reader, w1, w2 io.Writer) error {
+							fmt.Fprintln(w1, "hello")
+							fmt.Fprintln(w1, "world")
+							fmt.Fprintln(w1, "i")
+							fmt.Fprintln(w1, "am")
+							fmt.Fprintln(w1, "here")
+							return nil
+						},
+					}, false)
+
 					return nil
 				})
 			},
