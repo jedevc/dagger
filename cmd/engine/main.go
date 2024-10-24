@@ -213,7 +213,10 @@ func addFlags(app *cli.App) {
 			Usage: "Amount of storage GC keep locally, format \"Reserved[,Free[,Maximum]]\" (MB)",
 			Value: func() string {
 				cfg := defaultConf.Workers.OCI.GCConfig
-				dstat, _ := disk.GetDiskStat(defaultConf.Root)
+				dstat, err := disk.GetDiskStat(defaultConf.Root)
+				if err != nil {
+					panic(err)
+				}
 				return gcConfigToString(cfg, dstat)
 			}(),
 			Hidden: len(defaultConf.Workers.OCI.GCPolicy) != 0,

@@ -201,6 +201,15 @@ func (EngineSuite) TestLocalCacheAutomaticGC(ctx context.Context, t *testctx.T) 
 				}
 
 				// failed, print current usage for debugging
+
+				reservedSpace, err := c2.DaggerEngine().LocalCache().ReservedSpace(ctx)
+				require.NoError(t, err)
+				minFreeSpace, err := c2.DaggerEngine().LocalCache().MinFreeSpace(ctx)
+				require.NoError(t, err)
+				maxUsedSpace, err := c2.DaggerEngine().LocalCache().MaxUsedSpace(ctx)
+				require.NoError(t, err)
+				t.Logf("Base cache policy: reservedSpace=%d minFreeSpace=%d maxUsedSpace=%d", reservedSpace, minFreeSpace, maxUsedSpace)
+
 				ents, err := cacheEnts.Entries(ctx)
 				if err != nil {
 					t.Logf("Failed to get cache entries for debugging: %v", err)

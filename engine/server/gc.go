@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -122,6 +123,11 @@ func (srv *Server) gc() {
 	eg.Go(func() error {
 		defer close(ch)
 		if policy := srv.baseWorker.GCPolicy(); len(policy) > 0 {
+			dt, _ := json.Marshal(policy)
+			bklog.G(ctx).Debugf("applying gc policy %s", string(dt))
+			stat, _ := disk.GetDiskStat(srv.rootDir)
+			dt, _ = json.Marshal(stat)
+			bklog.G(ctx).Debugf("disk stat %s", string(dt))
 			return srv.baseWorker.Prune(ctx, ch, policy...)
 		}
 		return nil
@@ -140,7 +146,10 @@ func getGCPolicy(cfg config.GCConfig, root string) []bkclient.PruneInfo {
 	if cfg.GC != nil && !*cfg.GC {
 		return nil
 	}
-	dstat, _ := disk.GetDiskStat(root)
+	dstat, err := disk.GetDiskStat(root)
+	if err != nil {
+		panic(err)
+	}
 	if len(cfg.GCPolicy) == 0 {
 		cfg.GCPolicy = defaultGCPolicy(cfg, dstat)
 	}
