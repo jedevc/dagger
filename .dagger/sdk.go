@@ -167,20 +167,29 @@ func gitPublish(ctx context.Context, git *dagger.VersionGit, opts gitPublishOpts
 			return err
 		}
 
-		destCommit, err := base.
+		ctr, err := base.
 			WithEnvVariable("CACHEBUSTER", identity.NewID()).
 			WithWorkdir("/src/dagger").
 			WithExec([]string{"git", "clone", opts.dest, "."}).
 			WithExec([]string{"git", "fetch", "origin", "-v", "--update-head-ok", fmt.Sprintf("refs/*%[1]s:refs/*%[1]s", strings.TrimPrefix(opts.destTag, "refs/"))}).
-			WithExec([]string{"git", "checkout", opts.destTag, "--"}).
-			WithExec([]string{"git", "rev-parse", "HEAD"}).
-			Stdout(ctx)
+			// HACK: update after dagger/dagger#9027 is released (git checkout
+			// returns 128 if the reference doesn't exist)
+			WithExec([]string{"sh", "-c", "git checkout " + opts.destTag + " -- || true"}).
+			// WithExec([]string{"git", "checkout", opts.destTag, "--"}, dagger.ContainerWithExecOpts{Expect: dagger.Any}).
+			Sync(ctx)
 		if err != nil {
-			if strings.Contains(err.Error(), "invalid reference: "+opts.destTag) {
-				// this is a ref that only exists in the source, and not in the
-				// dest, so no overwriting will occur
-				return nil
-			}
+			return err
+		}
+		if stderr, err := ctr.Stderr(ctx); err != nil {
+			return err
+		} else if strings.Contains(stderr, "invalid reference: "+opts.destTag) {
+			// this is a ref that only exists in the source, and not in the
+			// dest, so no overwriting will occur
+			return nil
+		}
+
+		destCommit, err := ctr.WithExec([]string{"git", "rev-parse", "HEAD"}).Stdout(ctx)
+		if err != nil {
 			return err
 		}
 		destCommit = strings.TrimSpace(destCommit)
