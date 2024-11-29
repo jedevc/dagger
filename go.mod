@@ -299,3 +299,5 @@ replace (
 )
 
 replace github.com/moby/buildkit => github.com/dagger/buildkit v0.0.0-20241010144035-f69c0798296a
+
+replace mvdan.cc/sh/v3 => github.com/jedevc/mvdan-sh/v3 v3.0.0-20241129172146-8582b615246d

@@ -18,7 +18,10 @@ var _ readline.AutoCompleter = (*shellAutoComplete)(nil)
 
 func (h *shellAutoComplete) Do(line []rune, pos int) (newLine [][]rune, length int) {
 	file, err := parseShell(strings.NewReader(string(line)), "")
-	if err != nil {
+	if err != nil && !syntax.IsIncomplete(err) {
+		return nil, 0
+	}
+	if file == nil {
 		return nil, 0
 	}
 
@@ -50,6 +53,11 @@ func (h *shellAutoComplete) Do(line []rune, pos int) (newLine [][]rune, length i
 		}
 		return true
 	})
+	if stmt == nil && strings.TrimSpace(string(line[:pos])) != "" {
+		// if no statement found, we should error out if we're not at the beginning
+		// of the input
+		return nil, 0
+	}
 
 	var inprogressWord *syntax.Word
 	syntax.Walk(file, func(node syntax.Node) bool {

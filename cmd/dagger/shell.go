@@ -293,7 +293,7 @@ func (h *shellCallHandler) run(ctx context.Context, reader io.Reader, name strin
 func parseShell(reader io.Reader, name string) (*syntax.File, error) {
 	file, err := syntax.NewParser(syntax.Variant(syntax.LangPOSIX)).Parse(reader, name)
 	if err != nil {
-		return nil, err
+		return file, err
 	}
 
 	syntax.Walk(file, func(node syntax.Node) bool {
