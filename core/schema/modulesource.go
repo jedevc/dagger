@@ -377,6 +377,10 @@ func (s *moduleSchema) moduleSourceAsString(ctx context.Context, src *core.Modul
 	return src.RefString()
 }
 
+func (s *moduleSchema) moduleSourcePin(ctx context.Context, src *core.ModuleSource, args struct{}) (string, error) {
+	return src.Pin()
+}
+
 func (s *moduleSchema) gitModuleSourceHTMLURL(
 	ctx context.Context,
 	ref *core.GitModuleSource,
