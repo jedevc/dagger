@@ -1,0 +1,242 @@
+<example>
+  <name>Build multi-arch image with cross-compliation</name>
+  <description>
+    The following Dagger Function builds a single image for different CPU architectures using cross-compilation.
+
+    :::info
+    This Dagger Function uses the `containerd` utility module. To run it locally
+    install the module first with `dagger install github.com/levlaz/daggerverse/containerd@v0.1.2`
+    :::
+  </description>
+  <snippet language="go">
+    package main
+
+    import (
+    	"context"
+
+    	"dagger/my-module/internal/dagger"
+    )
+
+    type MyModule struct{}
+
+    // Build and publish multi-platform image
+    func (m *MyModule) Build(
+    	ctx context.Context,
+    	// Source code location
+    	// can be local directory or remote Git repository
+    	src *dagger.Directory,
+    ) (string, error) {
+    	// platforms to build for and push in a multi-platform image
+    	var platforms = []dagger.Platform{
+    		"linux/amd64", // a.k.a. x86_64
+    		"linux/arm64", // a.k.a. aarch64
+    		"linux/s390x", // a.k.a. IBM S/390
+    	}
+
+    	// container registry for the multi-platform image
+    	const imageRepo = "ttl.sh/myapp:latest"
+
+    	platformVariants := make([]*dagger.Container, 0, len(platforms))
+    	for _, platform := range platforms {
+    		// parse architecture using containerd utility module
+    		platformArch, err := dag.Containerd().ArchitectureOf(ctx, platform)
+
+    		if err != nil {
+    			return "", err
+    		}
+
+    		// pull golang image for the *host* platform, this is done by
+    		// not specifying the a platform. The default is the host platform.
+    		ctr := dag.Container().
+    			From("golang:1.21-alpine").
+    			// mount source code
+    			WithDirectory("/src", src).
+    			// mount empty dir where built binary will live
+    			WithDirectory("/output", dag.Directory()).
+    			// ensure binary will be statically linked and thus executable
+    			// in the final image
+    			WithEnvVariable("CGO_ENABLED", "0").
+    			// configure go compiler to use cross-compilation targeting the
+    			// desired platform
+    			WithEnvVariable("GOOS", "linux").
+    			WithEnvVariable("GOARCH", platformArch).
+    			// build binary and put result at mounted output directory
+    			WithWorkdir("/src").
+    			WithExec([]string{"go", "build", "-o", "/output/hello"})
+
+    		// select output directory
+    		outputDir := ctr.Directory("/output")
+
+    		// wrap the output directory in the new empty container marked
+    		// with the same platform
+    		binaryCtr := dag.Container(dagger.ContainerOpts{Platform: platform}).
+    			WithRootfs(outputDir).
+    			WithEntrypoint([]string{"/hello"})
+
+    		platformVariants = append(platformVariants, binaryCtr)
+    	}
+
+    	// publish to registry
+    	imageDigest, err := dag.Container().
+    		Publish(ctx, imageRepo, dagger.ContainerPublishOpts{
+    			PlatformVariants: platformVariants,
+    		})
+
+    	if err != nil {
+    		return "", err
+    	}
+
+    	// return build directory
+    	return imageDigest, nil
+    }
+  </snippet>
+  <snippet language="python">
+    from typing import Annotated
+
+    import dagger
+    from dagger import Doc, dag, function, object_type
+
+
+    @object_type
+    class MyModule:
+        @function
+        async def build(
+            self,
+            src: Annotated[
+                dagger.Directory,
+                Doc(
+                    "Source code location can be local directory or remote Git \
+                    repository"
+                ),
+            ],
+        ) -> str:
+            """Build an publish multi-platform image"""
+            # platforms to build for and push in a multi-platform image
+            platforms = [
+                dagger.Platform("linux/amd64"),  # a.k.a. x86_64
+                dagger.Platform("linux/arm64"),  # a.k.a. aarch64
+                dagger.Platform("linux/s390x"),  # a.k.a. IBM S/390
+            ]
+
+            # container registry for multi-platform image
+            image_repo = "ttl.sh/myapp:latest"
+
+            platform_variants = []
+            for platform in platforms:
+                # parse architecture using containerd utility module
+                platform_arch = await dag.containerd().architecture_of(platform)
+
+                # pull golang image for the *host* platform, this is done by
+                # not specifying the a platform. The default is the host platform.
+                ctr = (
+                    dag.container()
+                    .from_("golang:1.21-alpine")
+                    # mount source
+                    .with_directory("/src", src)
+                    # mount empty dir where built binary will live
+                    .with_directory("/output", dag.directory())
+                    # ensure binary will be statically linked and thus executable
+                    # in the final image
+                    .with_env_variable("CGO_ENABLED", "0")
+                    # configure go compiler to use cross-compilation targeting the
+                    # desired platform
+                    .with_env_variable("GOOS", "linux")
+                    .with_env_variable("GOARCH", platform_arch)
+                    # build binary and put result at mounted output directory
+                    .with_workdir("/src")
+                    .with_exec(["go", "build", "-o", "/output/hello"])
+                )
+
+                # selelct output directory
+                output_dir = ctr.directory("/output")
+
+                # wrap output directory in a new empty container marked
+                # with the same platform
+                binary_ctr = (
+                    dag.container(platform=platform)
+                    .with_rootfs(output_dir)
+                    .with_entrypoint(["/hello"])
+                )
+
+                platform_variants.append(binary_ctr)
+
+            # publish to registry
+            image_digest = dag.container().publish(
+                image_repo, platform_variants=platform_variants
+            )
+
+            return await image_digest
+  </snippet>
+  <snippet language="typescript">
+    import {
+      dag,
+      Container,
+      Directory,
+      Platform,
+      object,
+      func,
+    } from "@dagger.io/dagger"
+
+    @object()
+    class MyModule {
+      /**
+       * Build and publish multi-platform image
+       * @param src source code location
+       */
+      @func()
+      async build(src: Directory): Promise<string> {
+        // platforms to build for and push in a multi-platform image
+        const platforms: Platform[] = [
+          "linux/amd64" as Platform, // a.k.a. x86_64
+          "linux/arm64" as Platform, // a.k.a. aarch64
+          "linux/s390x" as Platform, // a.k.a. IBM S/390
+        ]
+
+        // container registry for multi-platform image
+        const imageRepo = "ttl.sh/myapp:latest"
+        const platformVariants: Array<Container> = []
+        for (const platform of platforms) {
+          // parse architecture using containerd utility module
+          const platformArch = await dag.containerd().architectureOf(platform)
+
+          const ctr = dag
+            // pull golang image for the *host* platform, this is done by
+            // not specifying the a platform. The default is the host platform.
+            .container()
+            .from("golang:1.21-alpine")
+            // mount source
+            .withDirectory("/src", src)
+            // mount empty dir where built binary will live
+            .withDirectory("/output", dag.directory())
+            // ensure binary will be statically linked and thus executable
+            // in the final image
+            .withEnvVariable("CGO_ENABLED", "0")
+            // configure go compiler to use cross-compilation targeting the
+            // desired platform
+            .withEnvVariable("GOOS", "linux")
+            .withEnvVariable("GOARCH", platformArch)
+            .withWorkdir("/src")
+            .withExec(["go", "build", "-o", "/output/hello"])
+
+          // select output directory
+          const outputDir = ctr.directory("/output")
+
+          // wrap output directory in a new empty container marked
+          // with the same platform
+          const binaryCtr = await dag
+            .container({ platform: platform })
+            .withRootfs(outputDir)
+            .withEntrypoint(["/hello"])
+
+          platformVariants.push(binaryCtr)
+        }
+        // publish to registry
+        const imageDigest = await dag
+          .container()
+          .publish(imageRepo, { platformVariants: platformVariants })
+
+        return imageDigest
+      }
+    }
+  </snippet>
+</example>

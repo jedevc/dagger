@@ -1,0 +1,63 @@
+<example>
+  <name>Interactive Debugging</name>
+  <description>
+    See it in action:
+
+    ![Interactive debugging](/img/current_docs/features/debug-interactive.gif)
+
+    You can also set one or more explicit breakpoints in your pipeline, which then starts an interactive terminal session at each breakpoint. This lets you inspect a directory or a container at any point in your pipeline run, with all the necessary context available to you.
+
+    Here's another example, which opens an interactive terminal at two different points in a pipeline run to inspect the built container:
+  </description>
+  <snippet language="go">
+    package main
+
+    import (
+    	"context"
+    	"dagger/my-module/internal/dagger"
+    )
+
+    type MyModule struct{}
+
+    func (m *MyModule) Foo(ctx context.Context) *dagger.Container {
+    	return dag.Container().
+    		From("alpine:latest").
+    		Terminal().
+    		WithExec([]string{"sh", "-c", "echo hello world > /foo"}).
+    		Terminal()
+    }
+  </snippet>
+  <snippet language="python">
+    import dagger
+    from dagger import dag, function, object_type
+
+
+    @object_type
+    class MyModule:
+        @function
+        async def foo(self) -> dagger.Container:
+            return await (
+                dag.container()
+                .from_("alpine:latest")
+                .terminal()
+                .with_exec(["sh", "-c", "echo hello world > /foo"])
+                .terminal()
+            )
+  </snippet>
+  <snippet language="typescript">
+    import { dag, object, Directory, Container, func } from "@dagger.io/dagger"
+
+    @object()
+    class MyModule {
+      @func()
+      async foo(): Container {
+        return await dag
+          .container()
+          .from("alpine:latest")
+          .terminal()
+          .withExec(["sh", "-c", "echo hello world > /foo"])
+          .terminal()
+      }
+    }
+  </snippet>
+</example>

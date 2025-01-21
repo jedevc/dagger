@@ -1,0 +1,59 @@
+<example>
+  <name>Inspect directories and files</name>
+  <description>
+    The following Dagger Function clones Dagger's GitHub repository and opens an interactive terminal session to inspect it. Under the hood, this creates a new container (defaults to `alpine`) and starts a shell, mounting the repository directory inside.
+  </description>
+  <snippet language="go">
+    package main
+
+    import (
+      "context"
+    )
+
+    type MyModule struct{}
+
+    func (m *MyModule) SimpleDirectory(ctx context.Context) (string, error) {
+    	return dag.
+    		Git("https://github.com/dagger/dagger.git").
+    		Head().
+    		Tree().
+    		Terminal().
+    		File("README.md").
+    		Contents(ctx)
+    }
+  </snippet>
+  <snippet language="python">
+    from dagger import dag, function, object_type
+
+
+    @object_type
+    class MyModule:
+        @function
+        async def simple_directory(self) -> str:
+            return await (
+                dag.git("https://github.com/dagger/dagger.git")
+                .head()
+                .tree()
+                .terminal()
+                .file("README.md")
+                .contents()
+            )
+  </snippet>
+  <snippet language="typescript">
+    import { dag, Container, object, func } from "@dagger.io/dagger"
+
+    @object()
+    class MyModule {
+      @func()
+      async simpleDirectory(): Promise<string> {
+        return await dag
+          .git("https://github.com/dagger/dagger.git")
+          .head()
+          .tree()
+          .terminal()
+          .file("README.md")
+          .contents()
+      }
+    }
+  </snippet>
+</example>

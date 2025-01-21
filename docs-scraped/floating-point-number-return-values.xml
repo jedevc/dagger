@@ -1,0 +1,37 @@
+<example>
+  <name>Floating-point number return values</name>
+  <description>
+    Here is an example of a Dagger Function that returns the sum of two floating-point numbers:
+  </description>
+  <snippet language="go">
+    package main
+
+    type MyModule struct{}
+
+    func (m *MyModule) AddFloat(a float64, b float64) float64 {
+      return a + b
+    }
+  </snippet>
+  <snippet language="python">
+    from dagger import function, object_type
+
+
+    @object_type
+    class MyModule:
+        @function
+        async def add_float(self, a: float, b: float) -> float:
+            return a + b
+  </snippet>
+  <snippet language="typescript">
+    import type { float } from "@dagger.io/dagger"
+    import { object, func } from "@dagger.io/dagger"
+
+    @object()
+    export class MyModule {
+      @func()
+      addFloat(a: float, b: float): float {
+        return a + b
+      }
+    }
+  </snippet>
+</example>

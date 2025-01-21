@@ -1,4 +1,5 @@
 import argparse
+import textwrap
 from os import path
 import glob
 import os
@@ -96,14 +97,30 @@ def main():
             slug = baseslug + "-" + str(n)
         slugs.add(slug)
 
-        with open(path.join(args.output, slug) + ".md", "w") as f:
-            f.write("# " + example.headers[-1] + "\n\n")
-            f.write(example.content + "\n\n")
+        # with open(path.join(args.output, slug) + ".md", "w") as f:
+        #     f.write("# " + example.headers[-1] + "\n\n")
+        #     f.write(example.content + "\n\n")
+        #
+        #     for source in example.files:
+        #         f.write("```" + source.language + "\n")
+        #         f.write(source.content)
+        #         f.write("```\n\n")
+
+        with open(path.join(args.output, slug) + ".xml", "w") as f:
+            f.write("<example>\n")
+            f.write("  <name>" + example.headers[-1] + "</name>\n")
+            f.write(
+                "  <description>\n"
+                + textwrap.indent(example.content, "    ")
+                + "\n  </description>\n"
+            )
 
             for source in example.files:
-                f.write("```" + source.language + "\n")
-                f.write(source.content)
-                f.write("```\n\n")
+                f.write(f'  <snippet language="{source.language}">\n')
+                f.write(textwrap.indent(source.content, "    "))
+                f.write("  </snippet>\n")
+
+            f.write("</example>\n")
 
 
 @dataclass

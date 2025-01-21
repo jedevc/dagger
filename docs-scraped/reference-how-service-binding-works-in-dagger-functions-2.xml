@@ -1,0 +1,130 @@
+<example>
+  <name>Reference: How service binding works in Dagger Functions</name>
+  <description>
+    :::note
+    Dagger cancels each service run after a 10 second grace period to avoid frequent restarts, unless the explicit `Start` and `Stop` APIs are used.
+    :::
+
+    Services are based on containers, but they run a little differently. Whereas regular containers in Dagger are de-duplicated across the entire Dagger Engine, service containers are only de-duplicated within a Dagger client session. This means that if you run separate Dagger sessions that use the exact same services, they will each get their own "instance" of the service. This process is carefully tuned to preserve caching at each client call-site, while prohibiting "cross-talk" from one Dagger session's client to another Dagger session's service.
+
+    Content-addressed services are very convenient. You don't have to come up with names and maintain instances of services; just use them by value. You also don't have to manage the state of the service; you can just trust that it will be running when needed and stopped when not.
+
+    :::tip
+    If you need multiple instances of a service, just attach something unique to each one, such as an instance ID.
+    :::
+
+    Here's a more detailed client-server example of running commands against a Redis service:
+  </description>
+  <snippet language="go">
+    package main
+
+    import (
+    	"context"
+
+    	"dagger/my-module/internal/dagger"
+    )
+
+    type MyModule struct{}
+
+    // creates Redis service and client
+    func (m *MyModule) RedisService(ctx context.Context) (string, error) {
+    	redisSrv := dag.Container().
+    		From("redis").
+    		WithExposedPort(6379).
+    		AsService(dagger.ContainerAsServiceOpts{UseEntrypoint: true})
+
+    	// create Redis client container
+    	redisCLI := dag.Container().
+    		From("redis").
+    		WithServiceBinding("redis-srv", redisSrv)
+
+    	args := []string{"redis-cli", "-h", "redis-srv"}
+
+    	// set value
+    	setter, err := redisCLI.
+    		WithExec(append(args, "set", "foo", "abc")).
+    		Stdout(ctx)
+    	if err != nil {
+    		return "", err
+    	}
+
+    	// get value
+    	getter, err := redisCLI.
+    		WithExec(append(args, "get", "foo")).
+    		Stdout(ctx)
+    	if err != nil {
+    		return "", err
+    	}
+
+    	return setter + getter, nil
+    }
+  </snippet>
+  <snippet language="python">
+    from dagger import dag, function, object_type
+
+
+    @object_type
+    class MyModule:
+        @function
+        async def redis_service(self) -> str:
+            """Creates Redis service and client."""
+            redis_srv = (
+                dag.container()
+                .from_("redis")
+                .with_exposed_port(6379)
+                .as_service(use_entrypoint=True)
+            )
+
+            # create Redis client container
+            redis_cli = (
+                dag.container().from_("redis").with_service_binding("redis-srv", redis_srv)
+            )
+
+            args = ["redis-cli", "-h", "redis-srv"]
+
+            # set value
+            setter = await redis_cli.with_exec([*args, "set", "foo", "abc"]).stdout()
+
+            # get value
+            getter = await redis_cli.with_exec([*args, "get", "foo"]).stdout()
+
+            return setter + getter
+  </snippet>
+  <snippet language="typescript">
+    import { dag, object, func } from "@dagger.io/dagger"
+
+    @object()
+    class MyModule {
+      /**
+       * Creates Redis service and client
+       */
+      @func()
+      async redisService(): Promise<string> {
+        const redisSrv = dag
+          .container()
+          .from("redis")
+          .withExposedPort(6379)
+          .asService({ useEntrypoint: true })
+
+        // create Redis client container
+        const redisCLI = dag
+          .container()
+          .from("redis")
+          .withServiceBinding("redis-srv", redisSrv)
+          .withEntrypoint()
+
+        const args = ["redis-cli", "-h", "redis-srv"]
+
+        // set value
+        const setter = await redisCLI
+          .withExec([...args, "set", "foo", "abc"])
+          .stdout()
+
+        // get value
+        const getter = await redisCLI.withExec([...args, "get", "foo"]).stdout()
+
+        return setter + getter
+      }
+    }
+  </snippet>
+</example>

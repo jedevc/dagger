@@ -1,0 +1,36 @@
+<example>
+  <name>Inspecting directory contents</name>
+  <description>
+    Another way to debug how directories are being filtered is to create a function that receives a `Directory` as input, and returns the same `Directory`:
+  </description>
+  <snippet language="go">
+
+    func (m *MyModule) Debug(
+      ctx context.Context,
+      // +ignore=["*", "!analytics"]
+      source *dagger.Directory,
+    ) *dagger.Directory {
+      return source
+    }
+  </snippet>
+  <snippet language="python">
+
+    @function
+    async def foo(
+        self,
+        source: Annotated[
+            dagger.Directory, Ignore(["*", "!analytics"])
+        ],
+    ) -> dagger.Directory:
+        return source
+  </snippet>
+  <snippet language="typescript">
+
+    @func()
+    debug(
+       @argument({ ignore: ["*", "!analytics"] }) source: Directory,
+    ): Directory {
+      return source
+    }
+  </snippet>
+</example>

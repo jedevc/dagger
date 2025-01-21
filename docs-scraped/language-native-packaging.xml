@@ -1,0 +1,25 @@
+<example>
+  <name>Language-native packaging</name>
+  <description>
+    The structure of a Dagger module mimics that of each language's conventional packaging mechanisms and tools.
+  </description>
+  <snippet language="go">
+
+    // go.work
+    go 1.21.7
+
+    use (
+    	./path/to/mymodule
+    )
+  </snippet>
+  <snippet language="shell">
+
+    # executed by the runtime
+    uv pip install -r requirements.lock -e ./sdk -e .
+  </snippet>
+  <snippet language="shell">
+
+    # executed by the runtime container
+    yarn install --production
+  </snippet>
+</example>
