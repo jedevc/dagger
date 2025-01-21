@@ -1,0 +1,200 @@
+# Execute functions concurrently
+
+The following Dagger Function demonstrates how to use native-language concurrency features ([errgroups](https://pkg.go.dev/golang.org/x/sync/errgroup) in Go, [task groups](https://anyio.readthedocs.io/en/stable/tasks.html) in Python), and [promises](https://basarat.gitbook.io/typescript/future-javascript/promise) in TypeScript to execute other Dagger Functions concurrently. If any of the concurrently-running functions fails, the remaining ones will be immediately cancelled.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"dagger/my-module/internal/dagger"
+
+	"golang.org/x/sync/errgroup"
+)
+
+// Constructor
+func New(
+	source *dagger.Directory,
+) *MyModule {
+	return &MyModule{
+		Source: source,
+	}
+}
+
+type MyModule struct {
+	Source *dagger.Directory
+}
+
+// Return the result of running unit tests
+func (m *MyModule) Test(ctx context.Context) (string, error) {
+	return m.BuildEnv().
+		WithExec([]string{"npm", "run", "test:unit", "run"}).
+		Stdout(ctx)
+}
+
+// Return the result of running the linter
+func (m *MyModule) Lint(ctx context.Context) (string, error) {
+	return m.BuildEnv().
+		WithExec([]string{"npm", "run", "lint"}).
+		Stdout(ctx)
+}
+
+// Return the result of running the type-checker
+func (m *MyModule) Typecheck(ctx context.Context) (string, error) {
+	return m.BuildEnv().
+		WithExec([]string{"npm", "run", "type-check"}).
+		Stdout(ctx)
+}
+
+// Run linter, type-checker, unit tests concurrently
+func (m *MyModule) RunAllTests(ctx context.Context) error {
+	// Create error group
+	eg, gctx := errgroup.WithContext(ctx)
+
+	// Run linter
+	eg.Go(func() error {
+		_, err := m.Lint(gctx)
+		return err
+	})
+
+	// Run type-checker
+	eg.Go(func() error {
+		_, err := m.Typecheck(gctx)
+		return err
+	})
+
+	// Run unit tests
+	eg.Go(func() error {
+		_, err := m.Test(gctx)
+		return err
+	})
+
+	// Wait for all tests to complete
+	// If any test fails, the error will be returned
+	return eg.Wait()
+}
+
+// Build a ready-to-use development environment
+func (m *MyModule) BuildEnv() *dagger.Container {
+	nodeCache := dag.CacheVolume("node")
+	return dag.Container().
+		From("node:21-slim").
+		WithDirectory("/src", m.Source).
+		WithMountedCache("/root/.npm", nodeCache).
+		WithWorkdir("/src").
+		WithExec([]string{"npm", "install"})
+}
+```
+
+```python
+import anyio
+
+import dagger
+from dagger import dag, function, object_type
+
+
+@object_type
+class MyModule:
+    source: dagger.Directory
+
+    @function
+    async def test(self) -> str:
+        """Return the result of running unit tests"""
+        return await (
+            self.build_env().with_exec(["npm", "run", "test:unit", "run"]).stdout()
+        )
+
+    @function
+    async def typecheck(self) -> str:
+        """Return the result of running the type checker"""
+        return await self.build_env().with_exec(["npm", "run", "type-check"]).stdout()
+
+    @function
+    async def lint(self) -> str:
+        """Return the result of running the linter"""
+        return await self.build_env().with_exec(["npm", "run", "lint"]).stdout()
+
+    @function
+    async def run_all_tests(self):
+        """Run linter, type-checker, unit tests concurrently"""
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(self.lint)
+            tg.start_soon(self.typecheck)
+            tg.start_soon(self.test)
+
+    @function
+    def build_env(self) -> dagger.Container:
+        """Build a ready-to-use development environment"""
+        node_cache = dag.cache_volume("node")
+        return (
+            dag.container()
+            .from_("node:21-slim")
+            .with_directory("/src", self.source)
+            .with_mounted_cache("/root/.npm", node_cache)
+            .with_workdir("/src")
+            .with_exec(["npm", "install"])
+        )
+```
+
+```typescript
+import { dag, Container, Directory, object, func } from "@dagger.io/dagger"
+
+@object()
+class MyModule {
+  source: Directory
+
+  constructor(source: Directory) {
+    this.source = source
+  }
+
+  /**
+   * Return the result of running unit tests
+   */
+  @func()
+  async test(): Promise<string> {
+    return this.buildEnv().withExec(["npm", "run", "test:unit", "run"]).stdout()
+  }
+
+  /**
+   * Return the result of running the linter
+   */
+  @func()
+  async lint(): Promise<string> {
+    return this.buildEnv().withExec(["npm", "run", "lint"]).stdout()
+  }
+
+  /**
+   * Return the result of running the type-checker
+   */
+  @func()
+  async typecheck(): Promise<string> {
+    return this.buildEnv().withExec(["npm", "run", "type-check"]).stdout()
+  }
+
+  /**
+   * Run linter, type-checker, unit tests concurrently
+   */
+  @func()
+  async runAllTests(): Promise<void> {
+    await Promise.all([this.test(), this.lint(), this.typecheck()])
+  }
+
+  /**
+   * Build a ready-to-use development environment
+   */
+  @func()
+  buildEnv(): Container {
+    const nodeCache = dag.cacheVolume("node")
+    return dag
+      .container()
+      .from("node:21-slim")
+      .withDirectory("/src", this.source)
+      .withMountedCache("/root/.npm", nodeCache)
+      .withWorkdir("/src")
+      .withExec(["npm", "install"])
+  }
+}
+```
+

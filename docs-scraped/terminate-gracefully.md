@@ -1,0 +1,81 @@
+# Terminate gracefully
+
+The following Dagger Function demonstrates how to handle errors in a pipeline.
+
+```go
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"dagger/my-module/internal/dagger"
+)
+
+type MyModule struct{}
+
+// Generate an error
+func (m *MyModule) Test(ctx context.Context) (string, error) {
+	out, err := dag.
+		Container().
+		From("alpine").
+		// ERROR: cat: read error: Is a directory
+		WithExec([]string{"cat", "/"}).
+		Stdout(ctx)
+	var e *dagger.ExecError
+	if errors.As(err, &e) {
+		return fmt.Sprintf("Test pipeline failure: %s", e.Stderr), nil
+	} else if err != nil {
+		return "", err
+	}
+	return out, nil
+}
+```
+
+```python
+from dagger import DaggerError, dag, function, object_type
+
+
+@object_type
+class MyModule:
+    @function
+    async def test(self) -> str:
+        """Generate an error"""
+        try:
+            return await (
+                dag.container()
+                .from_("alpine")
+                # ERROR: cat: read error: Is a directory
+                .with_exec(["cat", "/"])
+                .stdout()
+            )
+        except DaggerError as e:
+            # DaggerError is the base class for all errors raised by dagger
+            return "Test pipeline failure: " + e.stderr
+```
+
+```typescript
+import { dag, object, func } from "@dagger.io/dagger"
+
+@object()
+class MyModule {
+  /**
+   * Generate an error
+   */
+  @func()
+  async test(): Promise<string> {
+    try {
+      return await dag
+        .container()
+        .from("alpine")
+        // ERROR: cat: read error: Is a directory
+        .withExec(["cat", "/"])
+        .stdout()
+    } catch (e) {
+      return `Test pipeline failure: ${e.stderr}`
+    }
+  }
+}
+```
+

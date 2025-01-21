@@ -1,0 +1,143 @@
+# Start and stop services
+
+The following Dagger Function demonstrates how to control a service's lifecycle by explicitly starting and stopping a service. This example uses a Redis service.
+
+```go
+package main
+
+import (
+	"context"
+
+	"dagger/my-module/internal/dagger"
+)
+
+type MyModule struct{}
+
+// Explicitly start and stop a Redis service
+func (m *MyModule) RedisService(ctx context.Context) (string, error) {
+	redisSrv := dag.Container().
+		From("redis").
+		WithExposedPort(6379).
+		AsService(dagger.ContainerAsServiceOpts{UseEntrypoint: true})
+
+	// start Redis ahead of time so it stays up for the duration of the test
+	redisSrv, err := redisSrv.Start(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	// stop the service when done
+	defer redisSrv.Stop(ctx)
+
+	// create Redis client container
+	redisCLI := dag.Container().
+		From("redis").
+		WithServiceBinding("redis-srv", redisSrv)
+
+	args := []string{"redis-cli", "-h", "redis-srv"}
+
+	// set value
+	setter, err := redisCLI.
+		WithExec(append(args, "set", "foo", "abc")).
+		Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	// get value
+	getter, err := redisCLI.
+		WithExec(append(args, "get", "foo")).
+		Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return setter + getter, nil
+}
+```
+
+```python
+import contextlib
+
+import dagger
+from dagger import dag, function, object_type
+
+
+@contextlib.asynccontextmanager
+async def managed_service(svc: dagger.Service):
+    """Start and stop a service."""
+    yield await svc.start()
+    await svc.stop()
+
+
+@object_type
+class MyModule:
+    @function
+    async def redis_service(self) -> str:
+        """Explicitly start and stop a Redis service."""
+        redis_srv = dag.container().from_("redis").with_exposed_port(6379).as_service()
+
+        # start Redis ahead of time so it stays up for the duration of the test
+        # and stop when done
+        async with managed_service(redis_srv) as redis_srv:
+            # create Redis client container
+            redis_cli = (
+                dag.container()
+                .from_("redis")
+                .with_service_binding("redis-srv", redis_srv)
+            )
+
+            args = ["redis-cli", "-h", "redis-srv"]
+
+            # set value
+            setter = await redis_cli.with_exec([*args, "set", "foo", "abc"]).stdout()
+
+            # get value
+            getter = await redis_cli.with_exec([*args, "get", "foo"]).stdout()
+
+            return setter + getter
+```
+
+```typescript
+import { dag, object, func } from "@dagger.io/dagger"
+
+@object()
+class MyModule {
+  /**
+   * Explicitly start and stop a Redis service
+   */
+  @func()
+  async redisService(): Promise<string> {
+    let redisSrv = dag
+      .container()
+      .from("redis")
+      .withExposedPort(6379)
+      .asService()
+
+    // start Redis ahead of time so it stays up for the duration of the test
+    redisSrv = await redisSrv.start()
+
+    // stop the service when done
+    await redisSrv.stop()
+
+    // create Redis client container
+    const redisCLI = dag
+      .container()
+      .from("redis")
+      .withServiceBinding("redis-srv", redisSrv)
+
+    const args = ["redis-cli", "-h", "redis-srv"]
+
+    // set value
+    const setter = await redisCLI
+      .withExec([...args, "set", "foo", "abc"])
+      .stdout()
+
+    // get value
+    const getter = await redisCLI.withExec([...args, "get", "foo"]).stdout()
+
+    return setter + getter
+  }
+}
+```
+

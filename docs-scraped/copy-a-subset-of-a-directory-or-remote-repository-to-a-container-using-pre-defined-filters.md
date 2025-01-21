@@ -1,0 +1,79 @@
+# Copy a subset of a directory or remote repository to a container using pre-defined filters
+
+The following Dagger Function accepts a `Directory` argument, which could reference either a directory from the local filesystem or a [remote Git repository](../api/arguments.mdx#remote-repositories). It copies the specified directory to the `/src` path in a container, using pre-defined filter patterns to exclude specified sub-directories and files, and returns the modified container.
+
+:::note
+When working with private Git repositories, ensure that [SSH authentication is properly configured](../api/remote-modules.mdx#configuring-ssh-authentication) on your Dagger host.
+:::
+
+:::note
+This is an example of [pre-call filtering](../api/fs-filters.mdx#pre-call-filtering) with [directory filters](../api/fs-filters.mdx).
+:::
+
+```go
+package main
+
+import (
+	"context"
+	"main/internal/dagger"
+)
+
+type MyModule struct{}
+
+func (m *MyModule) CopyDirectoryWithExclusions(
+	ctx context.Context,
+	// +ignore=["*", "!**/*.md"]
+	source *dagger.Directory,
+) (*dagger.Container, error) {
+	return dag.
+		Container().
+		From("alpine:latest").
+		WithDirectory("/src", source).
+		Sync(ctx)
+}
+```
+
+```python
+from typing import Annotated
+
+import dagger
+from dagger import Ignore, dag, function, object_type
+
+
+@object_type
+class MyModule:
+    @function
+    async def copy_directory_with_exclusions(
+        self,
+        source: Annotated[dagger.Directory, Ignore(["*", "!*.md"])],
+    ) -> dagger.Container:
+        return await (
+            dag.container().from_("alpine:latest").with_directory("/src", source).sync()
+        )
+```
+
+```typescript
+import {
+  dag,
+  object,
+  argument,
+  func,
+  Directory,
+  Container,
+} from "@dagger.io/dagger"
+
+@object()
+class MyModule {
+  @func()
+  async copy_directory_with_exclusions(
+    @argument({ ignore: ["*", "!**/*.md"] }) source: Directory,
+  ): Promise<Container> {
+    return await dag
+      .container()
+      .from("alpine:latest")
+      .withDirectory("/src", source)
+      .sync()
+  }
+}
+```
+

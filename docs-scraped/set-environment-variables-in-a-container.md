@@ -1,0 +1,59 @@
+# Set environment variables in a container
+
+The following Dagger Function demonstrates how to set a single environment variable in a container.
+
+```go
+package main
+
+import "context"
+
+type MyModule struct{}
+
+// Set a single environment variable in a container
+func (m *MyModule) SetEnvVar(ctx context.Context) (string, error) {
+	return dag.Container().
+		From("alpine").
+		WithEnvVariable("ENV_VAR", "VALUE").
+		WithExec([]string{"env"}).
+		Stdout(ctx)
+}
+```
+
+```python
+from dagger import dag, function, object_type
+
+
+@object_type
+class MyModule:
+    @function
+    async def set_env_var(self) -> str:
+        """Set a single environment variable in a container"""
+        return await (
+            dag.container()
+            .from_("alpine")
+            .with_env_variable("ENV_VAR", "VALUE")
+            .with_exec(["env"])
+            .stdout()
+        )
+```
+
+```typescript
+import { dag, object, func } from "@dagger.io/dagger"
+
+@object()
+class MyModule {
+  /**
+   * Set a single environment variable in a container
+   */
+  @func()
+  async setEnvVar(): Promise<string> {
+    return await dag
+      .container()
+      .from("alpine")
+      .withEnvVariable("ENV_VAR", "VALUE")
+      .withExec(["env"])
+      .stdout()
+  }
+}
+```
+

@@ -1,0 +1,120 @@
+# Clone a remote Git repository into a container by branch, tag or commit
+
+The following Dagger Function accepts a Git repository URL and a branch name, tag name or commit id. It copies the repository at the specified branch, tag or commit to the `/src` path in a container and returns the modified container.
+
+:::note
+When working with private Git repositories, ensure that [SSH authentication is properly configured](../api/remote-modules.mdx#configuring-ssh-authentication) on your Dagger host.
+:::
+
+```go
+package main
+
+import (
+	"context"
+	"dagger/my-module/internal/dagger"
+)
+
+type MyModule struct{}
+
+type Locator string
+
+const (
+	Branch Locator = "BRANCH"
+	Tag    Locator = "TAG"
+	Commit Locator = "COMMIT"
+)
+
+func (m *MyModule) Clone(ctx context.Context, repository string, locator Locator, ref string) *dagger.Container {
+	r := dag.Git(repository)
+	var d *dagger.Directory
+
+	switch locator {
+	case Branch:
+		d = r.Branch(ref).Tree()
+	case Tag:
+		d = r.Tag(ref).Tree()
+	case Commit:
+		d = r.Commit(ref).Tree()
+	}
+
+	return dag.Container().
+		From("alpine:latest").
+		WithDirectory("/src", d).
+		WithWorkdir("/src")
+}
+```
+
+```python
+import dagger
+from dagger import dag, enum_type, function, object_type
+
+
+@enum_type
+class Locator(dagger.Enum):
+    BRANCH = "BRANCH"
+    TAG = "TAG"
+    COMMIT = "COMMIT"
+
+
+@object_type
+class MyModule:
+    @function
+    async def clone(
+        self, repository: str, locator: Locator, ref: str
+    ) -> dagger.Container:
+        r = dag.git(repository)
+
+        if locator == Locator.BRANCH:
+            d = r.branch(ref).tree()
+        elif locator == Locator.TAG:
+            d = r.tag(ref).tree()
+        elif locator == Locator.COMMIT:
+            d = r.commit(ref).tree()
+        else:
+            raise ValueError
+
+        return (
+            dag.container()
+            .from_("alpine:latest")
+            .with_directory("/src", d)
+            .with_workdir("/src")
+        )
+```
+
+```typescript
+import { dag, Directory, Container, object, func } from "@dagger.io/dagger"
+
+export enum Locator {
+  Branch = "BRANCH",
+  Tag = "TAG",
+  Commit = "COMMIT",
+}
+
+@object()
+class MyModule {
+  @func()
+  clone(repository: string, locator: Locator, ref: string): Container {
+    const r = dag.git(repository)
+    let d: Directory
+
+    switch (locator) {
+      case Locator.Branch:
+        d = r.branch(ref).tree()
+        break
+      case Locator.Tag:
+        d = r.tag(ref).tree()
+        break
+      case Locator.Commit:
+        d = r.commit(ref).tree()
+        break
+    }
+
+    return dag
+      .container()
+      .from("alpine:latest")
+      .withDirectory("/src", d)
+      .withWorkdir("/src")
+  }
+}
+```
+

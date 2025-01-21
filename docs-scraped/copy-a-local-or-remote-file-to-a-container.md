@@ -1,0 +1,69 @@
+# Copy a local or remote file to a container
+
+The following Dagger Function accepts a `File` argument, which could reference either a file from the local filesystem or from a [remote Git repository](../api/arguments.mdx#remote-repositories). It writes the specified file to a container in the `/src/` directory and returns the modified container.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"dagger/my-module/internal/dagger"
+)
+
+type MyModule struct{}
+
+// Return a container with a specified file
+func (m *MyModule) CopyFile(
+	ctx context.Context,
+	// Source file
+	f *dagger.File,
+) *dagger.Container {
+	name, _ := f.Name(ctx)
+	return dag.Container().
+		From("alpine:latest").
+		WithFile(fmt.Sprintf("/src/%s", name), f)
+}
+```
+
+```python
+from typing import Annotated
+
+import dagger
+from dagger import Doc, dag, function, object_type
+
+
+@object_type
+class MyModule:
+    @function
+    async def copy_file(
+        self,
+        f: Annotated[dagger.File, Doc("Source file")],
+    ) -> dagger.Container:
+        """Return a container with a specified file"""
+        name = await f.name()
+        return dag.container().from_("alpine:latest").with_file(f"/src/{name}", f)
+```
+
+```typescript
+import { dag, Container, File, object, func } from "@dagger.io/dagger"
+
+@object()
+class MyModule {
+  /**
+   * Return a container with a specified file
+   */
+  @func()
+  async copyFile(
+    /**
+     * Source file
+     */
+    f: File,
+  ): Promise<Container> {
+    const name = await f.name()
+    return dag.container().from("alpine:latest").withFile(`/src/${name}`, f)
+  }
+}
+```
+

@@ -1,0 +1,125 @@
+# Build image from Dockerfile using different build context
+
+The following function builds an image from a Dockerfile with a build context that is different than the current working directory.
+
+```go
+package main
+
+import (
+	"context"
+	"dagger/my-module/internal/dagger"
+)
+
+type MyModule struct{}
+
+// Build and publish image from Dockerfile using a build context directory
+// in a different location than the current working directory
+func (m *MyModule) Build(
+	ctx context.Context,
+	// location of source directory
+	src *dagger.Directory,
+	// location of Dockerfile
+	dockerfile *dagger.File,
+) (string, error) {
+
+	// get build context with dockerfile added
+	workspace := dag.Container().
+		WithDirectory("/src", src).
+		WithWorkdir("/src").
+		WithFile("/src/custom.Dockerfile", dockerfile).
+		Directory("/src")
+
+	// build using Dockerfile and publish to registry
+	ref, err := dag.Container().
+		Build(workspace, dagger.ContainerBuildOpts{
+			Dockerfile: "custom.Dockerfile",
+		}).
+		Publish(ctx, "ttl.sh/hello-dagger")
+
+	if err != nil {
+		return "", err
+	}
+
+	return ref, nil
+}
+```
+
+```python
+from typing import Annotated
+
+import dagger
+from dagger import Doc, dag, function, object_type
+
+
+@object_type
+class MyModule:
+    @function
+    async def build(
+        self,
+        src: Annotated[
+            dagger.Directory,
+            Doc("location of source directory"),
+        ],
+        dockerfile: Annotated[
+            dagger.File,
+            Doc("location of Dockerfile"),
+        ],
+    ) -> str:
+        """
+        Build and publish image from Dockerfile
+
+        This example uses a build context directory in a different location
+        than the current working directory.
+        """
+        # get build context with dockerfile added
+        workspace = (
+            dag.container()
+            .with_directory("/src", src)
+            .with_workdir("/src")
+            .with_file("/src/custom.Dockerfile", dockerfile)
+            .directory("/src")
+        )
+
+        # build using Dockerfile and publish to registry
+        ref = (
+            dag.container()
+            .build(context=workspace, dockerfile="custom.Dockerfile")
+            .publish("ttl.sh/hello-dagger")
+        )
+
+        return await ref
+```
+
+```typescript
+import { dag, Directory, File, object, func } from "@dagger.io/dagger"
+
+@object()
+class MyModule {
+  /**
+   * Build and publish image from existing Dockerfile. This example uses a
+   * build context directory in a different location than the current working
+   * directory.
+   * @param src location of source directory
+   * @param dockerfile location of dockerfile
+   */
+  @func()
+  async build(src: Directory, dockerfile: File): Promise<string> {
+    // get build context with Dockerfile added
+    const workspace = await dag
+      .container()
+      .withDirectory("/src", src)
+      .withWorkdir("/src")
+      .withFile("/src/custom.Dockerfile", dockerfile)
+      .directory("/src")
+
+    // build using Dockerfile and publish to registry
+    const ref = await dag
+      .container()
+      .build(workspace, { dockerfile: "custom.Dockerfile" })
+      .publish("ttl.sh/hello-dagger")
+
+    return ref
+  }
+}
+```
+
