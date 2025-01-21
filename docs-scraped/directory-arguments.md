@@ -1,0 +1,69 @@
+# Directory arguments
+
+You can also pass a directory argument from the command-line. To do so, add the corresponding flag, followed by a local filesystem path or a remote Git reference. In both cases, the CLI will convert it to an object referencing the contents of that filesystem path or Git repository location, and pass the resulting `Directory` object as argument to the Dagger Function.
+
+Dagger Functions do not have access to the filesystem of the host you invoke the Dagger Function from (i.e. the host you execute a CLI command like `dagger call` from). Instead, host directories need to be explicitly passed as arguments to Dagger Functions.
+
+Here's an example of a Dagger Function that accepts a `Directory` as argument. The Dagger Function returns a tree representation of the files and directories at that path.
+
+```go
+package main
+
+import (
+	"context"
+
+	"main/internal/dagger"
+)
+
+type MyModule struct{}
+
+func (m *MyModule) Tree(ctx context.Context, src *dagger.Directory, depth string) (string, error) {
+	return dag.Container().
+		From("alpine:latest").
+		WithMountedDirectory("/mnt", src).
+		WithWorkdir("/mnt").
+		WithExec([]string{"apk", "add", "tree"}).
+		WithExec([]string{"tree", "-L", depth}).
+		Stdout(ctx)
+}
+```
+
+```python
+import dagger
+from dagger import dag, function, object_type
+
+
+@object_type
+class MyModule:
+    @function
+    async def tree(self, src: dagger.Directory, depth: str) -> str:
+        return await (
+            dag.container()
+            .from_("alpine:latest")
+            .with_mounted_directory("/mnt", src)
+            .with_workdir("/mnt")
+            .with_exec(["apk", "add", "tree"])
+            .with_exec(["tree", "-L", depth])
+            .stdout()
+        )
+```
+
+```typescript
+import { dag, Directory, object, func } from "@dagger.io/dagger"
+
+@object()
+class MyModule {
+  @func()
+  async tree(src: Directory, depth: string): Promise<string> {
+    return await dag
+      .container()
+      .from("alpine:latest")
+      .withMountedDirectory("/mnt", src)
+      .withWorkdir("/mnt")
+      .withExec(["apk", "add", "tree"])
+      .withExec(["tree", "-L", depth])
+      .stdout()
+  }
+}
+```
+

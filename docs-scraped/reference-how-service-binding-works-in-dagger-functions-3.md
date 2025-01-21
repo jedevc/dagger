@@ -1,0 +1,103 @@
+# Reference: How service binding works in Dagger Functions
+
+This example relies on the 10-second grace period, which you should try to avoid. Depending on the 10-second grace period is risky because there are many factors which could cause a 10-second delay between calls to Dagger, such as excessive CPU load, high network latency between the client and Dagger, or Dagger operations that require a variable amount of time to process.
+
+It would be better to chain both commands together, which ensures that the service stays running for both, as in the revision below:
+
+```go
+package main
+
+import (
+	"context"
+
+	"dagger/my-module/internal/dagger"
+)
+
+type MyModule struct{}
+
+// creates Redis service and client
+func (m *MyModule) RedisService(ctx context.Context) (string, error) {
+	redisSrv := dag.Container().
+		From("redis").
+		WithExposedPort(6379).
+		AsService(dagger.ContainerAsServiceOpts{UseEntrypoint: true})
+
+	// create Redis client container
+	redisCLI := dag.Container().
+		From("redis").
+		WithServiceBinding("redis-srv", redisSrv)
+
+	args := []string{"redis-cli", "-h", "redis-srv"}
+
+	// set and get value
+	return redisCLI.
+		WithExec(append(args, "set", "foo", "abc")).
+		WithExec(append(args, "get", "foo")).
+		Stdout(ctx)
+}
+```
+
+```python
+from dagger import dag, function, object_type
+
+
+@object_type
+class MyModule:
+    @function
+    async def redis_service(self) -> str:
+        """Creates Redis service and client."""
+        redis_srv = (
+            dag.container()
+            .from_("redis")
+            .with_exposed_port(6379)
+            .as_service(use_entrypoint=True)
+        )
+
+        # create Redis client container
+        redis_cli = (
+            dag.container().from_("redis").with_service_binding("redis-srv", redis_srv)
+        )
+
+        args = ["redis-cli", "-h", "redis-srv"]
+
+        # set and get value
+        return await (
+            redis_cli.with_exec([*args, "set", "foo", "abc"])
+            .with_exec([*args, "get", "foo"])
+            .stdout()
+        )
+```
+
+```typescript
+import { dag, object, func } from "@dagger.io/dagger"
+
+@object()
+class MyModule {
+  /**
+   * Creates Redis service and client
+   */
+  @func()
+  async redisService(): Promise<string> {
+    const redisSrv = dag
+      .container()
+      .from("redis")
+      .withExposedPort(6379)
+      .asService({ useEntrypoint: true })
+
+    // create Redis client container
+    const redisCLI = dag
+      .container()
+      .from("redis")
+      .withServiceBinding("redis-srv", redisSrv)
+
+    const args = ["redis-cli", "-h", "redis-srv"]
+
+    // set and get value
+    return await redisCLI
+      .withExec([...args, "set", "foo", "abc"])
+      .withExec([...args, "get", "foo"])
+      .stdout()
+  }
+}
+```
+

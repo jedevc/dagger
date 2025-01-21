@@ -1,0 +1,66 @@
+# Interactive Terminal
+
+The `Container.terminal()` method can be chained. It returns a `Container`, so it can be injected at any point in a pipeline (in this example, between `Container.from()` and `Container.withExec()` methods).
+
+:::tip
+Multiple terminals are supported in the same Dagger Function; they will open in sequence.
+:::
+
+It's also possible to inspect a directory using the `Container.terminal()` method. Here is an example of a Dagger Function which opens an interactive terminal on a directory:
+
+```go
+package main
+
+import (
+  "context"
+)
+
+type MyModule struct{}
+
+func (m *MyModule) SimpleDirectory(ctx context.Context) (string, error) {
+	return dag.
+		Git("https://github.com/dagger/dagger.git").
+		Head().
+		Tree().
+		Terminal().
+		File("README.md").
+		Contents(ctx)
+}
+```
+
+```python
+from dagger import dag, function, object_type
+
+
+@object_type
+class MyModule:
+    @function
+    async def simple_directory(self) -> str:
+        return await (
+            dag.git("https://github.com/dagger/dagger.git")
+            .head()
+            .tree()
+            .terminal()
+            .file("README.md")
+            .contents()
+        )
+```
+
+```typescript
+import { dag, Container, object, func } from "@dagger.io/dagger"
+
+@object()
+class MyModule {
+  @func()
+  async simpleDirectory(): Promise<string> {
+    return await dag
+      .git("https://github.com/dagger/dagger.git")
+      .head()
+      .tree()
+      .terminal()
+      .file("README.md")
+      .contents()
+  }
+}
+```
+

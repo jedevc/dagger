@@ -1,0 +1,111 @@
+# Inline Documentation
+
+Dagger modules and Dagger Functions should be documented so that descriptions are shown in the API and the CLI - for example, when calling `dagger functions` and `dagger call ... --help`.
+
+```go
+// A simple example module to say hello.
+
+// Further documentation for the module here.
+
+package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+type MyModule struct{}
+
+// Return a greeting.
+func (m *MyModule) Hello(
+	// Who to greet
+	name string,
+	// The greeting to display
+	greeting string,
+) string {
+	return fmt.Sprintf("%s, %s!", greeting, name)
+}
+
+// Return a loud greeting.
+func (m *MyModule) LoudHello(
+	// Who to greet
+	name string,
+	// The greeting to display
+	greeting string,
+) string {
+	out := fmt.Sprintf("%s, %s!", greeting, name)
+	return strings.ToUpper(out)
+}
+```
+
+```python
+"""A simple example module to say hello.
+
+Further documentation for the module here.
+"""
+
+from typing import Annotated
+
+from dagger import Doc, function, object_type
+
+
+@object_type
+class MyModule:
+    """Simple hello functions."""
+
+    @function
+    def hello(
+        self,
+        name: Annotated[str, Doc("Who to greet")],
+        greeting: Annotated[str, Doc("The greeting to display")],
+    ) -> str:
+        """Return a greeting."""
+        return f"{greeting}, {name}!"
+
+    @function
+    def loud_hello(
+        self,
+        name: Annotated[str, Doc("Who to greet")],
+        greeting: Annotated[str, Doc("The greeting to display")],
+    ) -> str:
+        """Return a loud greeting.
+
+        Loud means all caps.
+        """
+        return f"{greeting.upper()}, {name.upper()}!"
+```
+
+```typescript
+/**
+ * A simple example module to say hello.
+ *
+ * Further documentation for the module here.
+ */
+import { object, func } from "@dagger.io/dagger"
+
+@object()
+class MyModule {
+  /**
+   * Return a greeting.
+   *
+   * @param name Who to greet
+   * @param greeting The greeting to display
+   */
+  @func()
+  hello(name: string, greeting: string): string {
+    return `${greeting}, ${name}!`
+  }
+
+  /**
+   * Return a loud greeting.
+   *
+   * @param name Who to greet
+   * @param greeting The greeting to display
+   */
+  @func()
+  loudHello(name: string, greeting: string): string {
+    return `${greeting.toUpperCase()}, ${name.toUpperCase()}!`
+  }
+}
+```
+

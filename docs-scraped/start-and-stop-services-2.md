@@ -1,10 +1,6 @@
 # Start and stop services
 
-Services are designed to be expressed as a Directed Acyclic Graph (DAG) with explicit bindings allowing services to be started lazily, just like every other DAG node. But sometimes, you may need to explicitly manage the lifecycle in a Dagger Function.
-
-For example, this may be needed if the application in the service has certain behavior on shutdown (such as flushing data) that needs careful coordination with the rest of your logic.
-
-The following example explicitly starts the Redis service and stops it at the end, ensuring the 10 second grace period doesn't get in the way, without the need for a persistent cache volume:
+The following Dagger Function demonstrates how to control a service's lifecycle by explicitly starting and stopping a service. This example uses a Redis service.
 
 ```go
 package main

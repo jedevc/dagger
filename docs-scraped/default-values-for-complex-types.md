@@ -1,0 +1,75 @@
+# Default values for complex types
+
+Constructors can be passed both simple and complex types (such as `Container`, `Directory`, `Service` etc.) as arguments. Default values can be assigned in both cases.
+
+Here is an example of a Dagger module with a default constructor argument of type `Container`:
+
+```go
+package main
+
+import (
+	"context"
+
+	"main/internal/dagger"
+)
+
+func New(
+	// +optional
+	ctr *dagger.Container,
+) *MyModule {
+	if ctr == nil {
+		ctr = dag.Container().From("alpine:3.14.0")
+	}
+	return &MyModule{
+		Ctr: *ctr,
+	}
+}
+
+type MyModule struct {
+	Ctr dagger.Container
+}
+
+func (m *MyModule) Version(ctx context.Context) (string, error) {
+	c := m.Ctr
+	return c.
+		WithExec([]string{"/bin/sh", "-c", "cat /etc/os-release | grep VERSION_ID"}).
+		Stdout(ctx)
+}
+```
+
+```python
+import dagger
+from dagger import dag, function, object_type
+
+
+@object_type
+class MyModule:
+    ctr: dagger.Container = dag.container().from_("alpine:3.14.0")
+
+    @function
+    async def version(self) -> str:
+        return await self.ctr.with_exec(
+            ["/bin/sh", "-c", "cat /etc/os-release | grep VERSION_ID"]
+        ).stdout()
+```
+
+```typescript
+import { dag, Container, object, func } from "@dagger.io/dagger"
+
+@object()
+class MyModule {
+  ctr: Container
+
+  constructor(ctr?: Container) {
+    this.ctr = ctr ?? dag.container().from("alpine:3.14.0")
+  }
+
+  @func()
+  async version(): Promise<string> {
+    return await this.ctr
+      .withExec(["/bin/sh", "-c", "cat /etc/os-release | grep VERSION_ID"])
+      .stdout()
+  }
+}
+```
+

@@ -1,0 +1,85 @@
+# Chaining
+
+Each of Dagger's core types comes with functions of its own, which can be used to interact with the corresponding object.
+
+When calling a Dagger function that returns a core type, the Dagger API lets you follow up by calling one of that type's functions, which itself can return another type, and so on. This is called "function chaining", and is a core feature of Dagger.
+
+For example, if a Dagger function returns a `Directory`, the caller can continue the chain by calling a function from the `Directory` type to export it to the local filesystem, modify it, mount it into a container, and so on.
+
+Although you may not have realized it, you've already seen function chaining in action. Both the previous examples chain functions together into pipelines. Here is one more example to illustrate the concept:
+
+```shell
+dagger core container from --address="golang:latest" \
+  with-directory --path="/src" --directory="https://github.com/dagger/dagger#main" \
+  with-workdir --path="/src/cmd/dagger" \
+  with-exec --args="go","build","-o","dagger","." \
+  file --path="./dagger" \
+  export --path="./dagger.bin"
+```
+
+This example chains multiple function calls into a pipeline that builds the Dagger CLI from source and exports it to the Dagger host:
+- `from` returns a `golang` container image as a `Container` type
+- `with-directory` adds the Dagger open source repository to the container image filesystem
+- `with-workdir` sets the working directory to the Dagger repository
+- `with-exec` compiles the Dagger CLI
+- `file` returns the built binary as a `File` type
+- `export` exports the binary artifact to the Dagger host as `./dagger.bin`
+
+Functions can be chained with the CLI, or programmatically in a [custom Dagger function](./custom-functions.mdx) using a Dagger SDK. The following are equivalent:
+
+```go
+package main
+
+import (
+	"context"
+)
+
+type MyModule struct{}
+
+func (m *MyModule) Foo(ctx context.Context) (string, error) {
+	return dag.Container().
+		From("alpine:latest").
+		WithEntrypoint([]string{"cat","/etc/os-release"}).
+		Publish(ctx, "ttl.sh/my-alpine")
+}
+```
+
+```python
+from dagger import dag, function, object_type
+
+
+@object_type
+class MyModule:
+    @function
+    async def foo(self) -> str:
+        return (
+            await dag.container()
+            .from_("alpine:latest")
+            .with_entrypoint(["cat", "/etc/os-release"])
+            .publish("ttl.sh/my-alpine")
+        )
+```
+
+```typescript
+import { dag, object, func } from "@dagger.io/dagger"
+
+@object()
+class MyModule {
+  @func()
+  async foo(): Promise<string> {
+    return await dag
+      .container()
+      .from("alpine:latest")
+      .withEntrypoint(["cat", "/etc/os-release"])
+      .publish("ttl.sh/my-alpine")
+  }
+}
+```
+
+```shell
+
+dagger core container from --address="alpine:latest" \
+  with-entrypoint --args="cat","/etc/os-release" \
+  publish --address="ttl.sh/my-alpine"
+```
+

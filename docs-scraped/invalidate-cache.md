@@ -3,9 +3,8 @@
 The following function demonstrates how to invalidate the Dagger layer cache and force execution of subsequent pipeline steps, by introducing a volatile time variable at a specific point in the Dagger pipeline.
 
 :::note
-- This is a temporary workaround until cache invalidation support is officially added to Dagger.
-- Changes in mounted cache volumes or secrets do not invalidate the Dagger layer cache.
-
+* This is a temporary workaround until cache invalidation support is officially added to Dagger.
+* Changes in mounted cache volumes or secrets do not invalidate the Dagger layer cache.
 :::
 
 ```go

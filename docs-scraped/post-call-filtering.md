@@ -1,0 +1,88 @@
+# Post-call filtering
+
+Post-call filtering means that a directory is filtered after it's uploaded to the Dagger Engine.
+
+This is useful when working with directories that are modified "in place" by a Dagger Function. When building an application, your Dagger Function might modify the source directory during the build by adding new files to it. A post-call filter allows you to use that directory in another operation, only fetching the new files and ignoring the old ones.
+
+A good example of this is a multi-stage build. Imagine a Dagger Function that reads and builds an application from source, placing the compiled binaries in a new sub-directory (stage 1). Instead of then transferring everything to the final container image for distribution (stage 2), you could use a post-call filter to transfer only the compiled files.
+
+```go
+package main
+
+import (
+	"context"
+	"dagger/my-module/internal/dagger"
+)
+
+type MyModule struct{}
+
+func (m *MyModule) Foo(
+	ctx context.Context,
+	source *dagger.Directory,
+) *dagger.Container {
+	builder := dag.
+		Container().
+		From("golang:latest").
+		WithDirectory("/src", source, dagger.ContainerWithDirectoryOpts{Exclude: []string{"*.git", "internal"}}).
+		WithWorkdir("/src/hello").
+		WithExec([]string{"go", "build", "-o", "hello.bin", "."})
+	return dag.
+		Container().
+		From("alpine:latest").
+		WithDirectory("/app", builder.Directory("/src/hello"), dagger.ContainerWithDirectoryOpts{Include: []string{"hello.bin"}}).
+		WithEntrypoint([]string{"/app/hello.bin"})
+}
+```
+
+```python
+import dagger
+from dagger import dag, function, object_type
+
+
+@object_type
+class MyModule:
+    @function
+    def foo(self, source: dagger.Directory) -> dagger.Container:
+        builder = (
+            dag.container()
+            .from_("golang:latest")
+            .with_directory("/src", source, exclude=["*.git", "internal"])
+            .with_workdir("/src/hello")
+            .with_exec(["go", "build", "-o", "hello.bin", "."])
+        )
+
+        return (
+            dag.container()
+            .from_("alpine:latest")
+            .with_directory(
+                "/app", builder.directory("/src/hello"), include=["hello.bin"]
+            )
+            .with_entrypoint(["/app/hello.bin"])
+        )
+```
+
+```typescript
+import { dag, Container, Directory, object, func } from "@dagger.io/dagger"
+
+@object()
+class MyModule {
+  @func()
+  foo(source: Directory): Container {
+    const builder = dag
+      .container()
+      .from("golang:latest")
+      .withDirectory("/src", source, { exclude: ["*.git", "internal"] })
+      .withWorkdir("/src/hello")
+      .withExec(["go", "build", "-o", "hello.bin", "."])
+
+    return dag
+      .container()
+      .from("alpine:latest")
+      .withDirectory("/app", builder.directory("/src/hello"), {
+        include: ["hello.bin"],
+      })
+      .withEntrypoint(["/app/hello.bin"])
+  }
+}
+```
+

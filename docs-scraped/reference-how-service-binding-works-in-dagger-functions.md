@@ -1,0 +1,93 @@
+# Reference: How service binding works in Dagger Functions
+
+If you're not interested in what's happening in the background, you can skip this section and just trust that services are running when they need to be. If you're interested in the theory, keep reading.
+
+Consider this example:
+
+```go
+package main
+
+import (
+	"context"
+
+	"dagger/my-module/internal/dagger"
+)
+
+type MyModule struct{}
+
+// creates Redis service and client
+func (m *MyModule) RedisService(ctx context.Context) (string, error) {
+	redisSrv := dag.Container().
+		From("redis").
+		WithExposedPort(6379).
+		AsService(dagger.ContainerAsServiceOpts{UseEntrypoint: true})
+
+	// create Redis client container
+	redisCLI := dag.Container().
+		From("redis").
+		WithServiceBinding("redis-srv", redisSrv)
+
+	// send ping from client to server
+	return redisCLI.
+		WithExec([]string{"redis-cli", "-h", "redis-srv", "ping"}).
+		Stdout(ctx)
+}
+```
+
+```python
+from dagger import dag, function, object_type
+
+
+@object_type
+class MyModule:
+    @function
+    async def redis_service(self) -> str:
+        """Creates Redis service and client."""
+        redis_srv = (
+            dag.container()
+            .from_("redis")
+            .with_exposed_port(6379)
+            .as_service(use_entrypoint=True)
+        )
+
+        # create Redis client container
+        redis_cli = (
+            dag.container().from_("redis").with_service_binding("redis-srv", redis_srv)
+        )
+
+        # send ping from client to server
+        return await redis_cli.with_exec(
+            ["redis-cli", "-h", "redis-srv", "ping"]
+        ).stdout()
+```
+
+```typescript
+import { dag, object, func } from "@dagger.io/dagger"
+
+@object()
+class MyModule {
+  /**
+   * Creates Redis service and client
+   */
+  @func()
+  async redisService(): Promise<string> {
+    const redisSrv = dag
+      .container()
+      .from("redis")
+      .withExposedPort(6379)
+      .asService({ useEntrypoint: true })
+
+    // create Redis client container
+    const redisCLI = dag
+      .container()
+      .from("redis")
+      .withServiceBinding("redis-srv", redisSrv)
+
+    // send ping from client to server
+    return await redisCLI
+      .withExec(["redis-cli", "-h", "redis-srv", "ping"])
+      .stdout()
+  }
+}
+```
+

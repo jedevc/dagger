@@ -1,0 +1,129 @@
+# Custom Types
+
+A Dagger module can have multiple object types defined. It's important to understand that they are only accessible through [chaining](./index.mdx#chaining), starting from a function in the main object.
+
+```go
+package main
+
+import "main/internal/dagger"
+
+type Github struct{}
+
+func (module *Github) DaggerOrganization() *Organization {
+	url := "https://github.com/dagger"
+	return &Organization{
+		URL:          url,
+		Repositories: []*dagger.GitRepository{dag.Git(url + "/dagger")},
+		Members: []*Account{
+			{"jane", "jane@example.com"},
+			{"john", "john@example.com"},
+		},
+	}
+}
+
+type Organization struct {
+	URL          string
+	Repositories []*dagger.GitRepository
+	Members      []*Account
+}
+
+type Account struct {
+	Username string
+	Email    string
+}
+
+func (account *Account) URL() string {
+	return "https://github.com/" + account.Username
+}
+```
+
+```python
+import dagger
+from dagger import dag, field, function, object_type
+
+
+@object_type
+class Account:
+    username: str = field()
+    email: str = field()
+
+    @function
+    def url(self) -> str:
+        return f"https://github.com/{self.username}"
+
+
+@object_type
+class Organization:
+    url: str = field()
+    repositories: list[dagger.GitRepository] = field()
+    members: list[Account] = field()
+
+
+@object_type
+class Github:
+    @function
+    def dagger_organization(self) -> Organization:
+        url = "https://github.com/dagger"
+        return Organization(
+            url=url,
+            repositories=[dag.git(f"{url}/dagger")],
+            members=[
+                Account(username="jane", email="jane@example.com"),
+                Account(username="john", email="john@example.com"),
+            ],
+        )
+```
+
+```typescript
+import { dag, object, func, GitRepository } from "@dagger.io/dagger"
+
+@object()
+class Account {
+  @func()
+  username: string
+
+  @func()
+  email: string
+
+  constructor(username: string, email: string) {
+    this.username = username
+    this.email = email
+  }
+
+  @func()
+  url(): string {
+    return `https://github.com/${this.username}`
+  }
+}
+
+/**
+ * Organization has no specific methods, only exposed fields so
+ * we can define it with `type` instead of `class` to
+ * avoid the boilerplate of defining a constructor.
+ */
+export type Organization = {
+  url: string
+  repositories: GitRepository[]
+  members: Account[]
+}
+
+@object()
+class Github {
+  @func()
+  daggerOrganization(): Organization {
+    const url = "https://github.com/dagger"
+
+    const organization: Organization = {
+      url,
+      repositories: [dag.git(`${url}/dagger`)],
+      members: [
+        new Account("jane", "jane@example.com"),
+        new Account("john", "john@example.com"),
+      ],
+    }
+
+    return organization
+  }
+}
+```
+

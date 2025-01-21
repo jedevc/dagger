@@ -1,10 +1,6 @@
 # Create interdependent services
 
-Global hostnames can be assigned to services. This feature is especially valuable for complex networking configurations, such as circular dependencies between services, by allowing services to reference each other by predefined hostnames, without requiring an explicit service binding.
-
-Custom hostnames follow a structured format (`<host>.<module id>.<session id>.dagger.local`), ensuring unique identifiers across modules and sessions.
-
-For example, you can now run two services that depend on each other, each using a hostname to refer to the other by name:
+The following Dagger Function runs two services, service A and service B, that depend on each other. The services are set up with custom hostnames, `svca` and `svcb`, allowing each service to communicate with the other by hostname.
 
 ```go
 package main

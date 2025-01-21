@@ -1,0 +1,77 @@
+# Simple constructor
+
+The default constructor for a module can be overridden by registering a custom constructor. Its parameters are available as flags in the `dagger call` command directly.
+
+:::important
+Dagger modules have only one constructors. Constructors of [custom types](./custom-types.mdx) are not registered; they are constructed by the function that [chains](./index.mdx#chaining) them.
+:::
+
+Here is an example module with a custom constructor:
+
+```go
+// A Dagger module for saying hello world!
+
+package main
+
+import (
+	"fmt"
+)
+
+func New(
+	// +optional
+	// +default="Hello"
+	greeting string,
+	// +optional
+	// +default="World"
+	name string,
+) *MyModule {
+	return &MyModule{
+		Greeting: greeting,
+		Name:     name,
+	}
+}
+
+type MyModule struct {
+	Greeting string
+	Name     string
+}
+
+func (hello *MyModule) Message() string {
+	return fmt.Sprintf("%s, %s!", hello.Greeting, hello.Name)
+}
+```
+
+```python
+from dagger import function, object_type
+
+
+@object_type
+class MyModule:
+    greeting: str = "Hello"
+    name: str = "World"
+
+    @function
+    def message(self) -> str:
+        return f"{self.greeting}, {self.name}!"
+```
+
+```typescript
+import { object, func } from "@dagger.io/dagger"
+
+@object()
+class MyModule {
+  greeting: string
+  name: string
+
+  constructor(greeting = "Hello", name = "World") {
+    this.greeting = greeting
+    this.name = name
+  }
+
+  @func()
+  message(): string {
+    return `${this.greeting} ${this.name}`
+  }
+}
+```
+

@@ -1,0 +1,83 @@
+# Secrets
+
+Dagger has first-class support for "secrets", such as passwords, API keys, SSH keys and so on. These secrets can be securely used in Dagger functions without exposing them in plaintext logs, writing them into the filesystem of containers you're building, or inserting them into the cache.
+
+Here is an example, which uses a secret in a Dagger function chain:
+
+```shell
+
+export API_TOKEN="guessme"
+
+dagger core container \
+  from --address=alpine:latest \
+  with-secret-variable --name="MY_SECRET" --secret="env:API_TOKEN" \
+  with-exec --args="sh","-c",'echo this is the secret: $MY_SECRET' \
+  stdout
+```
+
+```go
+package main
+
+import (
+	"context"
+	"dagger/my-module/internal/dagger"
+)
+
+type MyModule struct{}
+
+func (m *MyModule) ShowSecret(
+	ctx context.Context,
+	token *dagger.Secret,
+) (string, error) {
+	return dag.Container().
+		From("alpine:latest").
+		WithSecretVariable("MY_SECRET", token).
+		WithExec([]string{"sh", "-c", `echo this is the secret: $MY_SECRET`}).
+		Stdout(ctx)
+}
+```
+
+```python
+import dagger
+from dagger import dag, function, object_type
+
+
+@object_type
+class MyModule:
+    @function
+    async def show_secret(
+        self,
+        token: dagger.Secret,
+    ) -> str:
+        return await (
+            dag.container()
+            .from_("alpine:latest")
+            .with_secret_variable("MY_SECRET", token)
+            .with_exec(
+                [
+                    "sh",
+                    "-c",
+                    ("echo this is the secret: $MY_SECRET"),
+                ]
+            )
+            .stdout()
+        )
+```
+
+```typescript
+import { dag, object, func, Secret } from "@dagger.io/dagger"
+
+@object()
+class MyModule {
+  @func()
+  async showSecret(token: Secret): Promise<string> {
+    return await dag
+      .container()
+      .from("alpine:latest")
+      .withSecretVariable("MY_SECRET", token)
+      .withExec(["sh", "-c", `echo this is the secret: $MY_SECRET`])
+      .stdout()
+  }
+}
+```
+
