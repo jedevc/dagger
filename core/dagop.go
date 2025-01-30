@@ -24,6 +24,7 @@ import (
 func init() {
 	buildkit.RegisterCustomOp(DirectoryDagOp{})
 	buildkit.RegisterCustomOp(RawDagOp{})
+	buildkit.RegisterCustomOp(MountedDagOp{})
 }
 
 // NewDirectoryDagOp takes a target ID for a Directory, and returns a Directory
@@ -194,6 +195,89 @@ func (op RawDagOp) Exec(ctx context.Context, g bksession.Group, inputs []solver.
 		return nil, err
 	}
 	f = nil
+
+	lm.Unmount()
+	lm = nil
+
+	snap, err := ref.Commit(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ref = nil
+
+	return []solver.Result{worker.NewWorkerRefResult(snap, opt.Worker)}, nil
+}
+
+// NewMountedDagOp takes a target ID, and executes it inside a buildkit
+// operation. However! The actual result of the computation is discarded, while
+// any data written to Output is returned as a Directory.
+func NewMountedDagOp(ctx context.Context, srv *dagql.Server, id *call.ID, inputs []llb.State) (*Directory, error) {
+	dagOp := MountedDagOp{ID: id}
+	st, err := buildkit.NewCustomLLB(ctx, dagOp, inputs,
+		llb.WithCustomNamef("%s %s", dagOp.Name(), id.Display()),
+		buildkit.WithPassthrough())
+	if err != nil {
+		return nil, err
+	}
+
+	query, ok := srv.Root().(dagql.Instance[*Query])
+	if !ok {
+		return nil, fmt.Errorf("server root was %T", srv.Root())
+	}
+
+	return NewDirectorySt(ctx, query.Self, st, "", Platform{}, nil)
+}
+
+type MountedDagOp struct {
+	ID     *call.ID
+	Output string
+}
+
+func (op MountedDagOp) Name() string {
+	return "dagop.mount"
+}
+
+func (op MountedDagOp) Backend() buildkit.CustomOpBackend {
+	return &op
+}
+
+func (op MountedDagOp) CacheKey(ctx context.Context) (key digest.Digest, err error) {
+	return op.ID.Digest(), nil
+}
+
+func (op MountedDagOp) Exec(ctx context.Context, g bksession.Group, inputs []solver.Result, opt buildkit.OpOpts) (outputs []solver.Result, retErr error) {
+	ref, err := opt.Cache.New(ctx, nil, g,
+		bkcache.WithRecordType(client.UsageRecordTypeRegular),
+		bkcache.WithDescription(op.Name()))
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create new mutable")
+	}
+	defer func() {
+		if retErr != nil && ref != nil {
+			ref.Release(context.WithoutCancel(ctx))
+		}
+	}()
+
+	mount, err := ref.Mount(ctx, false, g)
+	if err != nil {
+		return nil, err
+	}
+	lm := snapshot.LocalMounter(mount)
+	dir, err := lm.Mount()
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if retErr != nil && lm != nil {
+			lm.Unmount()
+		}
+	}()
+	op.Output = dir
+
+	_, err = opt.Server.LoadType(withDagOpContext(ctx, op), op.ID)
+	if err != nil {
+		return nil, err
+	}
 
 	lm.Unmount()
 	lm = nil
