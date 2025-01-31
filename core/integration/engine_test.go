@@ -13,6 +13,7 @@ import (
 
 	bkconfig "github.com/moby/buildkit/cmd/buildkitd/config"
 	"github.com/moby/buildkit/identity"
+	bkresolverconfig "github.com/moby/buildkit/util/resolver/config"
 	"github.com/pelletier/go-toml"
 
 	"dagger.io/dagger"
@@ -531,5 +532,58 @@ func (EngineSuite) TestModuleVersionCompat(ctx context.Context, t *testctx.T) {
 				require.Contains(t, stderr, tcerr)
 			}
 		})
+	}
+}
+
+func (EngineSuite) TestRegistryMirrors(ctx context.Context, t *testctx.T) {
+	c := connect(ctx, t)
+
+	imageName := "fakeimagethatisnotreal"
+	_, err := c.Container().From("alpine").Publish(ctx, registryRef(imageName))
+	require.NoError(t, err)
+
+	f := func(ctx context.Context, t *testctx.T, engine *dagger.Container) {
+		engineSvc, err := c.Host().Tunnel(devEngineContainerAsService(engine)).Start(ctx)
+		require.NoError(t, err)
+		t.Cleanup(func() { engineSvc.Stop(ctx) })
+
+		endpoint, err := engineSvc.Endpoint(ctx, dagger.ServiceEndpointOpts{Scheme: "tcp"})
+		require.NoError(t, err)
+
+		c, err := dagger.Connect(ctx, dagger.WithRunnerHost(endpoint), dagger.WithLogOutput(testutil.NewTWriter(t)))
+		require.NoError(t, err)
+		t.Cleanup(func() { c.Close() })
+
+		result, err := c.Container().From("mymirror.local/fakeimagethatisnotreal").WithExec([]string{"whoami"}).Stdout(ctx)
+		require.NoError(t, err)
+		require.Equal(t, "root", result)
+	}
+
+	// t.Run("engine.json", func(ctx context.Context, t *testctx.T) {
+	// 	cfg := engineWithConfig(ctx, t, engineConfigWithMirror("mymirror.local", registryHost))
+	// 	f(ctx, t, devEngineContainer(c, cfg))
+	// })
+
+	t.Run("engine.toml", func(ctx context.Context, t *testctx.T) {
+		cfg := engineWithBkConfig(ctx, t, bkConfigWithMirror("mymirror.local", registryHost))
+		f(ctx, t, devEngineContainer(c, cfg))
+	})
+}
+
+func engineConfigWithMirror(host string, target string) func(context.Context, *testctx.T, config.Config) config.Config {
+	return func(ctx context.Context, t *testctx.T, cfg config.Config) config.Config {
+		t.Helper()
+		cfg.Registries = append(cfg.Registries, config.Registry{Host: host, Mirrors: []string{target}})
+		return cfg
+	}
+}
+
+func bkConfigWithMirror(host string, target string) func(context.Context, *testctx.T, bkconfig.Config) bkconfig.Config {
+	return func(ctx context.Context, t *testctx.T, cfg bkconfig.Config) bkconfig.Config {
+		t.Helper()
+		cfg.Registries[host] = bkresolverconfig.RegistryConfig{
+			Mirrors: []string{target},
+		}
+		return cfg
 	}
 }

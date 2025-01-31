@@ -29,6 +29,9 @@ type Config struct {
 
 	// Security allows configuring various security settings for the engine.
 	Security Security `json:"security,omitempty"`
+
+	// Registries defines connection settings for registries.
+	Registries []Registry `json:"registries,omitempty"`
 }
 
 type LogLevel string
@@ -208,4 +211,19 @@ type Security struct {
 	// Disabling this option ensures that dagger build containers do not run as
 	// privileged, and is a basic form of security hardening.
 	InsecureRootCapabilities *bool `json:"insecureRootCapabilities,omitempty"`
+}
+
+type Registry struct {
+	// Host is the location of the registry, and should be of the form
+	// [host][:port] where port is optional.
+	Host string
+
+	// Mirrors defines a list of alternative registry locations that can be
+	// used instead. Each mirror should be of the form [host][:port][/project]
+	// where port and project are optional.
+	Mirrors []string `json:"mirrors,omitempty"`
+
+	// TLS configuration is left as an exercise to the reader for *now* - we
+	// already have a way of configuring global CA certificates, we shouldn't
+	// have more.
 }

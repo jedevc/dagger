@@ -56,6 +56,7 @@ import (
 	"github.com/moby/buildkit/util/network/cniprovider"
 	"github.com/moby/buildkit/util/network/netproviders"
 	"github.com/moby/buildkit/util/resolver"
+	bkresolverconfig "github.com/moby/buildkit/util/resolver/config"
 	"github.com/moby/buildkit/util/throttle"
 	"github.com/moby/buildkit/util/winlayers"
 	"github.com/moby/buildkit/version"
@@ -276,7 +277,16 @@ func NewServer(ctx context.Context, opts *NewServerOpts) (*Server, error) {
 		srv.enabledPlatforms = []ocispecs.Platform{srv.defaultPlatform}
 	}
 
-	srv.registryHosts = resolver.NewRegistryConfig(bkcfg.Registries)
+	registries := map[string]bkresolverconfig.RegistryConfig{}
+	for host, registry := range bkcfg.Registries {
+		registries[host] = registry
+	}
+	for _, registry := range cfg.Registries {
+		registries[registry.Host] = bkresolverconfig.RegistryConfig{
+			Mirrors: registry.Mirrors,
+		}
+	}
+	srv.registryHosts = resolver.NewRegistryConfig(registries)
 
 	if slog.Default().Enabled(ctx, slog.LevelExtraDebug) {
 		srv.buildkitLogSink = os.Stderr
