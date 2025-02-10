@@ -84,7 +84,7 @@ func (v Version) Version(ctx context.Context) (string, error) {
 	}
 	if dirty || head == nil {
 		// this is a dev version - git state is dirty, or we have no git state at all
-		// (v<major>.<minor>.<patch>-<timestamp>-dev-<inputdigest>)
+		// (v<major>.<minor>.<patch>-<timestamp>-<inputdigest>)
 		next, err := v.NextReleaseVersion(ctx)
 		if err != nil {
 			return "", err
@@ -97,7 +97,7 @@ func (v Version) Version(ctx context.Context) (string, error) {
 			digest = newDigest
 		}
 		// NOTE: the timestamp is empty here to prevent unnecessary rebuilds
-		return fmt.Sprintf("%s-%s-dev-%s", next, pseudoversionTimestamp(time.Time{}), digest[:12]), nil
+		return fmt.Sprintf("%s-%s-%s", next, pseudoversionTimestamp(time.Time{}), digest[:12]), nil
 	}
 
 	versionTag, err := v.Git.VersionTagLatest(ctx, "", head.Commit)
@@ -145,7 +145,7 @@ func (v Version) ImageTag(ctx context.Context) (string, error) {
 		return "", err
 	}
 	if dirty {
-		// this is a dev version - get the last commit from main on this branch
+		// this is a dirty version - get the last commit from main on this branch
 		// (<commit>)
 		mergeBase, err := v.Git.MergeBase(ctx, "main", head.Commit)
 		if err != nil {

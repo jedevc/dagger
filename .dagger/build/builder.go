@@ -26,6 +26,7 @@ type Builder struct {
 
 	version string
 	tag     string
+	dev     bool
 
 	platform     dagger.Platform
 	platformSpec ocispecs.Platform
@@ -36,7 +37,7 @@ type Builder struct {
 	race bool
 }
 
-func NewBuilder(ctx context.Context, source *dagger.Directory) (*Builder, error) {
+func NewBuilder(ctx context.Context, source *dagger.Directory, dev bool) (*Builder, error) {
 	source = dag.Directory().WithDirectory("/", source, dagger.DirectoryWithDirectoryOpts{
 		Exclude: []string{
 			".git",
@@ -83,12 +84,16 @@ func NewBuilder(ctx context.Context, source *dagger.Directory) (*Builder, error)
 	if err != nil {
 		return nil, err
 	}
+	if dev {
+		tag = "dev"
+	}
 	return &Builder{
 		source:       source,
 		platform:     dagger.Platform(platforms.DefaultString()),
 		platformSpec: platforms.DefaultSpec(),
 		version:      version,
 		tag:          tag,
+		dev:          dev,
 	}, nil
 }
 
@@ -308,6 +313,9 @@ func (build *Builder) binary(pkg string, version bool, race bool) *dagger.File {
 	}
 	if version && build.tag != "" {
 		ldflags = append(ldflags, "-X", "github.com/dagger/dagger/engine.Tag="+build.tag)
+	}
+	if version && build.dev {
+		ldflags = append(ldflags, "-X", "github.com/dagger/dagger/engine.Dev=true")
 	}
 
 	output := filepath.Join("./bin/", filepath.Base(pkg))

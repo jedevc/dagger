@@ -150,7 +150,7 @@ func (t TypescriptSDK) Generate(ctx context.Context) (*dagger.Directory, error) 
 	if err != nil {
 		return nil, err
 	}
-	build, err := build.NewBuilder(ctx, t.Dagger.Source())
+	build, err := build.NewBuilder(ctx, t.Dagger.Source(), t.Dagger.IsDev)
 	if err != nil {
 		return nil, err
 	}

@@ -19,6 +19,7 @@ type DaggerDev struct {
 	Version string
 	Tag     string
 	Git     *dagger.VersionGit // +private
+	IsDev   bool
 
 	// When set, module codegen is automatically applied when retrieving the Dagger source code
 	ModCodegen        bool
@@ -31,6 +32,11 @@ type DaggerDev struct {
 
 func New(
 	ctx context.Context,
+
+	// Make dev builds
+	// +optional
+	dev bool,
+
 	// +optional
 	// +defaultPath="/"
 	// +ignore=["bin", ".git", "**/node_modules", "**/.venv", "**/__pycache__"]
@@ -48,16 +54,20 @@ func New(
 	if err != nil {
 		return nil, err
 	}
+	if dev {
+		tag = "dev"
+	}
 
-	dev := &DaggerDev{
+	ddev := &DaggerDev{
 		Src:       source,
-		Tag:       tag,
 		Git:       v.Git(),
+		Tag:       tag,
 		Version:   version,
+		IsDev:     dev,
 		DockerCfg: dockerCfg,
 	}
 
-	modules, err := dev.containing(ctx, "dagger.json")
+	modules, err := ddev.containing(ctx, "dagger.json")
 	if err != nil {
 		return nil, err
 	}
@@ -68,10 +78,10 @@ func New(
 		if strings.HasPrefix(module, "core/integration/") {
 			continue
 		}
-		dev.ModCodegenTargets = append(dev.ModCodegenTargets, module)
+		ddev.ModCodegenTargets = append(ddev.ModCodegenTargets, module)
 	}
 
-	return dev, nil
+	return ddev, nil
 }
 
 // Enable module auto-codegen when retrieving the dagger source code
@@ -253,7 +263,7 @@ func (dev *DaggerDev) Dev(
 	}
 	return dev.Go().Env().
 		WithMountedDirectory("/mnt", target).
-		WithMountedFile("/usr/bin/dagger", dag.DaggerCli().Binary()).
+		WithMountedFile("/usr/bin/dagger", dag.DaggerCli(dagger.DaggerCliOpts{Dev: dev.IsDev}).Binary()).
 		WithEnvVariable("_EXPERIMENTAL_DAGGER_CLI_BIN", "/usr/bin/dagger").
 		WithServiceBinding("dagger-engine", svc).
 		WithEnvVariable("_EXPERIMENTAL_DAGGER_RUNNER_HOST", endpoint).
@@ -314,7 +324,7 @@ func (dev *DaggerDev) DevExport(
 	}
 	dir := dag.Directory().
 		WithFile("engine.tar", engineTar).
-		WithFile(hostCliPath, dag.DaggerCli().Binary(dagger.DaggerCliBinaryOpts{Platform: platform}))
+		WithFile(hostCliPath, dag.DaggerCli(dagger.DaggerCliOpts{Dev: dev.IsDev}).Binary(dagger.DaggerCliBinaryOpts{Platform: platform}))
 
 	// this allows our integration tests to plumb built cli binaries into containers when the host OS doesn't match
 	if platformSpec.OS != "linux" {

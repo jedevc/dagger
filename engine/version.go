@@ -2,7 +2,7 @@ package engine
 
 import (
 	"os"
-	"slices"
+	"strconv"
 	"strings"
 
 	"golang.org/x/mod/semver"
@@ -14,11 +14,14 @@ var (
 	// Note: this is filled at link-time.
 	//
 	// - For official tagged releases, this is simple semver like vX.Y.Z
-	// - For builds off our repo's main branch, this is a pre-release of the
+	// - For builds off of a commit, this is a pre-release of the
 	//   form vX.Y.Z-<timestamp>-<commit>
-	// - For local dev builds with no other specified version, this is a
-	//   pre-release of the form vX.Y.Z-<timestamp>-dev-<dirhash>
+	// - For dirty builds with no other specified version, this is a
+	//   pre-release of the form vX.Y.Z-<timestamp>-dirhash>
 	Version string
+
+	// Dev determines whether this is an explicitly marked dev build.
+	Dev string
 
 	// MinimumEngineVersion is used by the client to determine the minimum
 	// allowed engine version that can be used by that client.
@@ -80,17 +83,16 @@ func cleanVersion(v string) string {
 }
 
 func CheckVersionCompatibility(version string, minVersion string) bool {
-	if IsDevVersion(version) && IsDevVersion(Version) {
-		// Both our version and our target version are dev versions - in this
-		// case, strip pre-release info from our target, we should pretend it's
-		// just the real thing here.
+	if IsDev() {
+		// This is a dev build - in this case, strip pre-release info from our
+		// target, we should pretend it's just the real thing here.
 		version = BaseVersion(version)
 	}
 	return semver.Compare(version, minVersion) >= 0
 }
 
 func CheckMaxVersionCompatibility(version string, maxVersion string) bool {
-	if IsDevVersion(version) && IsDevVersion(Version) {
+	if IsDev() {
 		// see CheckVersionCompatibility
 		version = BaseVersion(version)
 	}
@@ -121,9 +123,7 @@ func BaseVersion(version string) string {
 	return version
 }
 
-func IsDevVersion(version string) bool {
-	if version == "" {
-		return true
-	}
-	return slices.Contains(strings.Split(semver.Prerelease(version), "-"), "dev")
+func IsDev() bool {
+	dev, _ := strconv.ParseBool(Dev)
+	return dev
 }

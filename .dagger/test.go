@@ -288,6 +288,9 @@ func (t *Test) goTest(
 		"-X", "github.com/dagger/dagger/engine.Version=" + t.Dagger.Version,
 		"-X", "github.com/dagger/dagger/engine.Tag=" + t.Dagger.Tag,
 	}
+	if t.Dagger.IsDev {
+		ldflags = append(ldflags, "-X", "github.com/dagger/dagger/engine.Dev=true")
+	}
 	args = append(args, "-ldflags", strings.Join(ldflags, " "))
 
 	// All following are go test flags

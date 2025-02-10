@@ -21,7 +21,8 @@ func (cli *CLI) Binary(
 	// +optional
 	platform dagger.Platform,
 ) *dagger.File {
-	return dag.DaggerCli().Binary(dagger.DaggerCliBinaryOpts{Platform: platform})
+	return dag.DaggerCli(dagger.DaggerCliOpts{Dev: cli.Dagger.IsDev}).
+		Binary(dagger.DaggerCliBinaryOpts{Platform: platform})
 }
 
 const (
@@ -101,7 +102,6 @@ func (cli *CLI) Publish(
 		WithEnvVariable("AWS_BUCKET", awsBucket).
 		WithEnvVariable("ARTEFACTS_FQDN", artefactsFQDN).
 		WithEnvVariable("ENGINE_VERSION", cli.Dagger.Version).
-		WithEnvVariable("ENGINE_TAG", cli.Dagger.Tag).
 		WithEntrypoint([]string{"/sbin/tini", "--", "/entrypoint.sh"}).
 		WithExec(args, dagger.ContainerWithExecOpts{
 			UseEntrypoint: true,

@@ -7,6 +7,11 @@ import (
 
 func New(
 	ctx context.Context,
+
+	// Make a dev build of the CLI
+	// +optional
+	dev bool,
+
 	// +optional
 	// +defaultPath="/"
 	// +ignore=["*", ".*", "!/cmd/dagger/*", "!**/go.sum", "!**/go.mod", "!**/*.go", "!**.graphql"]
@@ -25,14 +30,22 @@ func New(
 	if err != nil {
 		return nil, err
 	}
+	if dev {
+		imageTag = "dev"
+	}
+
+	// FIXME: how to avoid duplication with engine module?
+	values := []string{
+		"github.com/dagger/dagger/engine.Version=" + version,
+		"github.com/dagger/dagger/engine.Tag=" + imageTag,
+	}
+	if dev {
+		values = append(values, "github.com/dagger/dagger/engine.Dev=true")
+	}
 	return &DaggerCli{
 		Gomod: dag.Go(source, dagger.GoOpts{
-			Base: base,
-			Values: []string{
-				// FIXME: how to avoid duplication with engine module?
-				"github.com/dagger/dagger/engine.Version=" + version,
-				"github.com/dagger/dagger/engine.Tag=" + imageTag,
-			},
+			Base:   base,
+			Values: values,
 		}),
 	}, nil
 }

@@ -75,7 +75,7 @@ func (e *DaggerEngine) Container(
 		return nil, err
 	}
 
-	builder, err := build.NewBuilder(ctx, e.Dagger.Source())
+	builder, err := build.NewBuilder(ctx, e.Dagger.Source(), e.Dagger.IsDev)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,9 @@ func (e *DaggerEngine) Container(
 		WithFile(engineEntrypointPath, entrypoint).
 		WithEntrypoint([]string{filepath.Base(engineEntrypointPath)})
 
-	cli := dag.DaggerCli().Binary(dagger.DaggerCliBinaryOpts{
+	cli := dag.DaggerCli(dagger.DaggerCliOpts{
+		Dev: e.Dagger.IsDev,
+	}).Binary(dagger.DaggerCliBinaryOpts{
 		Platform: platform,
 	})
 	ctr = ctr.

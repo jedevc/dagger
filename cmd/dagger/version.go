@@ -56,7 +56,11 @@ func versionCmd() *cobra.Command {
 }
 
 func short() string {
-	return fmt.Sprintf("dagger %s (%s:%s)", engine.Version, engine.EngineImageRepo, engine.Tag)
+	version := engine.Version
+	if engine.IsDev() {
+		version += " dev"
+	}
+	return fmt.Sprintf("dagger %s (%s:%s)", version, engine.EngineImageRepo, engine.Tag)
 }
 
 func long() string {
@@ -64,7 +68,7 @@ func long() string {
 }
 
 func updateAvailable(ctx context.Context) (string, error) {
-	if engine.IsDevVersion(engine.Version) {
+	if engine.IsDev() {
 		return "", nil
 	}
 

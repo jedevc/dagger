@@ -15,6 +15,8 @@ func (e *DaggerEngine) LoadToDocker(
 	ctx context.Context,
 
 	docker *dagger.Socket,
+
+	// +optional
 	name string,
 
 	// +optional
@@ -27,6 +29,13 @@ func (e *DaggerEngine) LoadToDocker(
 	// +optional
 	gpuSupport bool,
 ) (*LoadedEngine, error) {
+	if name == "" {
+		name = distconsts.EngineImageRepo
+		if e.Dagger.IsDev {
+			name += ":dev"
+		}
+	}
+
 	ctr, err := e.Container(ctx, platform, image, gpuSupport)
 	if err != nil {
 		return nil, err

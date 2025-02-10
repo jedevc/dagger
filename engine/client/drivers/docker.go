@@ -46,7 +46,10 @@ func shouldCleanupEngines() bool {
 type dockerDriver struct{}
 
 func (d *dockerDriver) Provision(ctx context.Context, target *url.URL, opts *DriverOpts) (Connector, error) {
-	helper, err := d.create(ctx, target.Host+target.Path, opts)
+	devQuery := target.Query().Get("dev")
+	dev, _ := strconv.ParseBool(devQuery)
+
+	helper, err := d.create(ctx, target.Host+target.Path, dev, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +78,7 @@ const InstrumentationLibrary = "dagger.io/client.drivers"
 // previous executions of the engine at different versions (which
 // are identified by looking for containers with the prefix
 // "dagger-engine-").
-func (d *dockerDriver) create(ctx context.Context, imageRef string, opts *DriverOpts) (helper *connh.ConnectionHelper, rerr error) {
+func (d *dockerDriver) create(ctx context.Context, imageRef string, dev bool, opts *DriverOpts) (helper *connh.ConnectionHelper, rerr error) {
 	ctx, span := otel.Tracer("").Start(ctx, "create")
 	defer telemetry.End(span, func() error { return rerr })
 	slog := slog.SpanLogger(ctx, InstrumentationLibrary)
@@ -86,15 +89,23 @@ func (d *dockerDriver) create(ctx context.Context, imageRef string, opts *Driver
 	}
 
 	// run the container using that id in the name
-	containerName := containerNamePrefix + id
+	var containerName string
+	if dev {
+		containerName = distconsts.EngineContainerName
+	} else {
+		containerName = containerNamePrefix + id
+	}
 
-	leftoverEngines, err := collectLeftoverEngines(ctx)
-	if err != nil {
-		if errors.Is(err, context.Canceled) {
-			return nil, err
+	var leftoverEngines []string
+	if !dev {
+		leftoverEngines, err = collectLeftoverEngines(ctx)
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				return nil, err
+			}
+			slog.Warn("failed to list containers", "error", err)
+			leftoverEngines = []string{}
 		}
-		slog.Warn("failed to list containers", "error", err)
-		leftoverEngines = []string{}
 	}
 
 	for i, leftoverEngine := range leftoverEngines {

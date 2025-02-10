@@ -45,7 +45,12 @@ func RunnerHost() string {
 	if os.Getenv(GPUSupportEnv) != "" {
 		tag += "-gpu"
 	}
-	return fmt.Sprintf("docker-image://%s:%s", EngineImageRepo, tag)
+
+	uri := fmt.Sprintf("docker-image://%s:%s", distconsts.EngineImageRepo, tag)
+	if IsDev() {
+		uri += "?dev=true"
+	}
+	return uri
 }
 
 const (

@@ -6,6 +6,7 @@
 package distconsts
 
 const (
+	EngineImageRepo     = "registry.dagger.io/engine"
 	EngineContainerName = "dagger-engine.dev"
 )
 
