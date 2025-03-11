@@ -195,7 +195,8 @@ type gitSourceHandler struct {
 }
 
 func (gs *gitSourceHandler) shaToCacheKey(sha string) string {
-	key := sha
+	key := gs.src.Ref
+	key += sha
 	if gs.src.KeepGitDir {
 		key += ".git"
 	}
