@@ -17,6 +17,7 @@ import (
 	"dagger.io/dagger/telemetry"
 	"github.com/Khan/genqlient/graphql"
 	"github.com/containerd/containerd/content"
+	"github.com/containerd/platforms"
 	"github.com/koron-go/prefixw"
 	"github.com/moby/buildkit/cache/remotecache"
 	bkclient "github.com/moby/buildkit/client"
@@ -922,6 +923,7 @@ func (srv *Server) ServeHTTPToNestedClient(w http.ResponseWriter, r *http.Reques
 		ClientMetadata: &engine.ClientMetadata{
 			ClientID:          execMD.ClientID,
 			ClientVersion:     clientVersion,
+			ClientPlatform:    platforms.DefaultString(),
 			ClientSecretToken: execMD.SecretToken,
 			SessionID:         execMD.SessionID,
 			ClientHostname:    execMD.Hostname,

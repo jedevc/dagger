@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/Khan/genqlient/graphql"
+	"github.com/containerd/platforms"
 	"github.com/docker/cli/cli/config"
 	"github.com/google/uuid"
 	controlapi "github.com/moby/buildkit/api/services/control"
@@ -1121,6 +1122,7 @@ func (c *Client) clientMetadata() engine.ClientMetadata {
 	return engine.ClientMetadata{
 		ClientID:                  c.ID,
 		ClientVersion:             clientVersion,
+		ClientPlatform:            platforms.DefaultString(),
 		SessionID:                 c.SessionID,
 		ClientSecretToken:         c.SecretToken,
 		ClientHostname:            c.hostname,

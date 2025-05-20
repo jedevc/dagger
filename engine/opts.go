@@ -59,6 +59,9 @@ type ClientMetadata struct {
 	// ClientVersion is the version string of the client that make the request.
 	ClientVersion string `json:"client_version"`
 
+	// ClientPlatform is the platform of the client that made the request.
+	ClientPlatform string `json:"client_platform"`
+
 	// (Optional) Pipeline labels for e.g. vcs info like branch, commit, etc.
 	Labels map[string]string `json:"labels"`
 
