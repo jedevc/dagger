@@ -1097,7 +1097,7 @@ func setInputObjectFields(obj any, vals map[string]any) error {
 			fieldV.Set(val.Elem())
 			continue
 		}
-		zeroInput, err := builtinOrInput(fieldI)
+		zeroInput, err := inputType(fieldI)
 		if err != nil {
 			return fmt.Errorf("arg %q: %w", fieldT.Name, err)
 		}
@@ -1161,7 +1161,7 @@ func collectLiteralArgs(obj any) ([]*call.Argument, error) {
 			args = append(args, subArgs...)
 			continue
 		}
-		input, err := builtinOrInput(fieldI)
+		input, err := inputType(fieldI)
 		if err != nil {
 			return nil, fmt.Errorf("arg %q: %w", fieldT.Name, err)
 		}

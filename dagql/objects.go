@@ -1280,7 +1280,7 @@ type reflectField[T any] struct {
 }
 
 func InputSpecsForType(obj any, optIn bool) (InputSpecs, error) {
-	fields, err := reflectFieldsForType(obj, optIn, builtinOrInput)
+	fields, err := reflectFieldsForType(obj, optIn, inputType)
 	if err != nil {
 		return InputSpecs{}, err
 	}

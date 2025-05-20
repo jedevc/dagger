@@ -123,61 +123,48 @@ func (d DynamicArrayOutput) SetField(val reflect.Value) error {
 	return nil
 }
 
-func builtinOrInput(val any) (Input, error) {
+// inputType returns an input type - the value isn't valid, but it can be used
+// to Decode a given value.
+func inputType(val any) (Input, error) {
 	switch x := val.(type) {
 	case Input:
 		return x, nil
 	case string:
-		return String(x), nil
+		return String(""), nil
 	case int:
-		return Int(x), nil
+		return Int(0), nil
 	case int32:
-		return Int(x), nil
+		return Int(0), nil
 	case int64:
-		return Int(x), nil
+		return Int(0), nil
 	case float32:
-		return Float(x), nil
+		return Float(0), nil
 	case float64:
-		return Float(x), nil
+		return Float(0), nil
 	case bool:
-		return Boolean(x), nil
+		return Boolean(false), nil
 	default:
 		valT := reflect.TypeOf(val)
 		if val == nil {
 			return nil, fmt.Errorf("cannot convert nil to an Input value")
 		}
-		reflectVal := reflect.ValueOf(val)
 		switch valT.Kind() {
 		case reflect.Slice:
-			input, err := builtinOrInput(reflect.New(valT.Elem()).Elem().Interface())
+			input, err := inputType(reflect.New(valT.Elem()).Elem().Interface())
 			if err != nil {
 				return nil, fmt.Errorf("slice elem: %w", err)
 			}
 			arr := DynamicArrayInput{
 				Elem: input,
 			}
-			for i := range reflectVal.Len() {
-				elem, err := builtinOrInput(reflectVal.Index(i).Interface())
-				if err != nil {
-					return nil, fmt.Errorf("slice elem val %d: %w", i, err)
-				}
-				arr.Values = append(arr.Values, elem)
-			}
 			return arr, nil
 		case reflect.Ptr:
-			input, err := builtinOrInput(reflect.New(valT.Elem()).Elem().Interface())
+			input, err := inputType(reflect.New(valT.Elem()).Elem().Interface())
 			if err != nil {
 				return nil, fmt.Errorf("pointer elem: %w", err)
 			}
 			dynOpt := DynamicOptional{
 				Elem: input,
-			}
-			if !reflectVal.IsNil() {
-				dynOpt.Value, err = dynOpt.Elem.Decoder().DecodeInput(reflectVal.Elem().Interface())
-				if err != nil {
-					return nil, fmt.Errorf("pointer elem val: %w", err)
-				}
-				dynOpt.Valid = true
 			}
 			return dynOpt, nil
 		default:
