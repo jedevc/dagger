@@ -267,7 +267,7 @@ func (obj *CoreModScalar) ConvertFromSDKResult(ctx context.Context, value any) (
 	if !ok {
 		return nil, fmt.Errorf("CoreModScalar.ConvertFromSDKResult: found no scalar type")
 	}
-	return s.DecodeInput(value)
+	return s.DecodeInput(ctx, value)
 }
 
 func (obj *CoreModScalar) ConvertToSDKInput(ctx context.Context, value dagql.Typed) (any, error) {
@@ -280,7 +280,7 @@ func (obj *CoreModScalar) ConvertToSDKInput(ctx context.Context, value dagql.Typ
 		// we assume all core scalars are strings
 		return nil, fmt.Errorf("CoreModScalar.ConvertToSDKInput: core scalar should be string")
 	}
-	return s.DecodeInput(string(val.Value))
+	return s.DecodeInput(ctx, string(val.Value))
 }
 
 func (obj *CoreModScalar) CollectCoreIDs(context.Context, dagql.Typed, map[digest.Digest]*resource.ID) error {
@@ -386,7 +386,7 @@ func (enum *CoreModEnum) ConvertFromSDKResult(ctx context.Context, value any) (d
 	if !ok {
 		return nil, fmt.Errorf("CoreModEnum.ConvertFromSDKResult: found no enum type")
 	}
-	return s.DecodeInput(value)
+	return s.DecodeInput(ctx, value)
 }
 
 func (enum *CoreModEnum) ConvertToSDKInput(ctx context.Context, value dagql.Typed) (any, error) {
@@ -394,7 +394,7 @@ func (enum *CoreModEnum) ConvertToSDKInput(ctx context.Context, value dagql.Type
 	if !ok {
 		return nil, fmt.Errorf("CoreModEnum.ConvertToSDKInput: found no enum type")
 	}
-	return s.DecodeInput(value)
+	return s.DecodeInput(ctx, value)
 }
 
 func (enum *CoreModEnum) CollectCoreIDs(ctx context.Context, value dagql.Typed, ids map[digest.Digest]*resource.ID) error {

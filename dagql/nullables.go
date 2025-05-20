@@ -1,6 +1,7 @@
 package dagql
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -96,12 +97,12 @@ func (o Optional[I]) Type() *ast.Type {
 
 var _ Derefable = Optional[Input]{}
 
-func (o Optional[I]) DecodeInput(val any) (Input, error) {
+func (o Optional[I]) DecodeInput(ctx context.Context, val any) (Input, error) {
 	if val == nil {
 		return Optional[I]{}, nil
 	}
 	var zero I
-	val, err := zero.Decoder().DecodeInput(val)
+	val, err := zero.Decoder().DecodeInput(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -149,14 +150,14 @@ func (o DynamicOptional) ToLiteral() call.Literal {
 
 var _ InputDecoder = DynamicOptional{}
 
-func (o DynamicOptional) DecodeInput(val any) (Input, error) {
+func (o DynamicOptional) DecodeInput(ctx context.Context, val any) (Input, error) {
 	if val == nil {
 		return DynamicOptional{
 			Elem:  o.Elem,
 			Valid: false,
 		}, nil
 	}
-	input, err := o.Elem.Decoder().DecodeInput(val)
+	input, err := o.Elem.Decoder().DecodeInput(ctx, val)
 	if err != nil {
 		return nil, err
 	}

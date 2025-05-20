@@ -1,6 +1,7 @@
 package dagql
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -180,7 +181,7 @@ type DynamicArrayInput struct {
 
 var _ InputDecoder = DynamicArrayInput{}
 
-func (d DynamicArrayInput) DecodeInput(val any) (Input, error) {
+func (d DynamicArrayInput) DecodeInput(ctx context.Context, val any) (Input, error) {
 	switch x := val.(type) {
 	case []any:
 		arr := DynamicArrayInput{
@@ -188,7 +189,7 @@ func (d DynamicArrayInput) DecodeInput(val any) (Input, error) {
 		}
 		decoder := d.Elem.Decoder()
 		for _, elem := range x {
-			decoded, err := decoder.DecodeInput(elem)
+			decoded, err := decoder.DecodeInput(ctx, elem)
 			if err != nil {
 				return nil, err
 			}
@@ -202,7 +203,7 @@ func (d DynamicArrayInput) DecodeInput(val any) (Input, error) {
 		if err := dec.Decode(&vals); err != nil {
 			return nil, fmt.Errorf("decode %q: %w", x, err)
 		}
-		return d.DecodeInput(vals)
+		return d.DecodeInput(ctx, vals)
 	default:
 		return nil, fmt.Errorf("expected array, got %T", val)
 	}

@@ -92,7 +92,7 @@ func (fn *Function) FieldSpec() (dagql.FieldSpec, error) {
 				return spec, fmt.Errorf("failed to decode default value for arg %q: %w", arg.Name, err)
 			}
 			var err error
-			defaultVal, err = input.Decoder().DecodeInput(val)
+			defaultVal, err = input.Decoder().DecodeInput(context.TODO(), val)
 			if err != nil {
 				return spec, fmt.Errorf("failed to decode default value for arg %q: %w", arg.Name, err)
 			}
@@ -258,7 +258,7 @@ func (d DynamicID) TypeName() string {
 
 var _ dagql.InputDecoder = DynamicID{}
 
-func (d DynamicID) DecodeInput(val any) (dagql.Input, error) {
+func (d DynamicID) DecodeInput(ctx context.Context, val any) (dagql.Input, error) {
 	switch x := val.(type) {
 	case string:
 		var idp call.ID

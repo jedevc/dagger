@@ -128,7 +128,7 @@ func ToolFunc[T any](srv *dagql.Server, fn func(context.Context, T) (any, error)
 		for _, spec := range specs.Inputs(srv.View) {
 			var input dagql.Input
 			if arg, provided := vals[spec.Name]; provided {
-				input, err = spec.Type.Decoder().DecodeInput(arg)
+				input, err = spec.Type.Decoder().DecodeInput(ctx, arg)
 				if err != nil {
 					return nil, fmt.Errorf("decode arg %q (%+v): %w", spec.Name, arg, err)
 				}
@@ -418,7 +418,7 @@ func (m *MCP) call(ctx context.Context,
 			return "", fmt.Errorf("expected %q to be a %q - got %q", recv, selfType, target.ObjectType().TypeName())
 		}
 	}
-	fieldSel, err := m.toolCallToSelection(srv, target, fieldDef, argsMap, toolProps)
+	fieldSel, err := m.toolCallToSelection(ctx, srv, target, fieldDef, argsMap, toolProps)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert call inputs: %w", err)
 	}
@@ -511,6 +511,7 @@ func (m *MCP) selectionToToolResult(
 }
 
 func (m *MCP) toolCallToSelection(
+	ctx context.Context,
 	srv *dagql.Server,
 	target dagql.Object,
 	// The definition of the dagql field to call. Example: Container.withExec
@@ -559,7 +560,7 @@ func (m *MCP) toolCallToSelection(
 			}
 			val = enc
 		}
-		input, err := arg.Type.Decoder().DecodeInput(val)
+		input, err := arg.Type.Decoder().DecodeInput(ctx, val)
 		if err != nil {
 			return sel, fmt.Errorf("arg %q: decode %T: %w", arg.Name, val, err)
 		}

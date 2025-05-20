@@ -218,7 +218,7 @@ func (cls Class[T]) ParseField(ctx context.Context, view View, astField *ast.Fie
 		if err != nil {
 			return Selector{}, nil, err
 		}
-		input, err := argSpec.Type.Decoder().DecodeInput(val)
+		input, err := argSpec.Type.Decoder().DecodeInput(ctx, val)
 		if err != nil {
 			return Selector{}, nil, fmt.Errorf("init arg %q value as %T (%s) using %T: %w", arg.Name, argSpec.Type, argSpec.Type.Type(), argSpec.Type.Decoder(), err)
 		}
@@ -525,7 +525,7 @@ func (r Instance[T]) Call(ctx context.Context, s *Server, newID *call.ID) (Typed
 
 		switch {
 		case inputLit != nil:
-			input, err := argSpec.Type.Decoder().DecodeInput(inputLit.ToInput())
+			input, err := argSpec.Type.Decoder().DecodeInput(ctx, inputLit.ToInput())
 			if err != nil {
 				return nil, nil, fmt.Errorf("Call: init arg %q value as %T (%s) using %T: %w", argSpec.Name, argSpec.Type, argSpec.Type.Type(), argSpec.Type.Decoder(), err)
 			}
@@ -1118,7 +1118,7 @@ func (fields Fields[T]) Install(server *Server) {
 		fields = append(fields, Field[T]{
 			Spec: &FieldSpec{
 				Name:               name,
-				Type:               field.Value,
+				Type:               field.Type,
 				Description:        field.Field.Tag.Get("doc"),
 				DeprecatedReason:   field.Field.Tag.Get("deprecated"),
 				ExperimentalReason: field.Field.Tag.Get("experimental"),
@@ -1275,7 +1275,7 @@ func definition(kind ast.DefinitionKind, val Type, view View) *ast.Definition {
 
 type reflectField[T any] struct {
 	Name  string
-	Value T
+	Type  T
 	Field reflect.StructField
 }
 
@@ -1288,11 +1288,11 @@ func InputSpecsForType(obj any, optIn bool) (InputSpecs, error) {
 	for i, field := range fields {
 		name := field.Name
 		fieldT := field.Field
-		input := field.Value
+		input := field.Type
 		var inputDef Input
 		if inputDefStr, hasDefault := fieldT.Tag.Lookup("default"); hasDefault {
 			var err error
-			inputDef, err = input.Decoder().DecodeInput(inputDefStr)
+			inputDef, err = input.Decoder().DecodeInput(context.TODO(), inputDefStr)
 			if err != nil {
 				return InputSpecs{}, fmt.Errorf("convert default value %q for arg %q: %w", inputDefStr, name, err)
 			}
@@ -1371,7 +1371,7 @@ func reflectFieldsForType[T any](obj any, optIn bool, init func(any) (T, error))
 		}
 		fields = append(fields, reflectField[T]{
 			Name:  name,
-			Value: val,
+			Type:  val,
 			Field: fieldT,
 		})
 	}

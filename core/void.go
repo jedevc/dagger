@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/vektah/gqlparser/v2/ast"
@@ -42,7 +43,7 @@ func (p Void) ToLiteral() call.Literal {
 
 var _ dagql.ScalarType = Void{}
 
-func (Void) DecodeInput(val any) (dagql.Input, error) {
+func (Void) DecodeInput(ctx context.Context, val any) (dagql.Input, error) {
 	// void types cannot be constructed - they have no corresponding valid values
 	return nil, fmt.Errorf("cannot convert %T to Void", val)
 }

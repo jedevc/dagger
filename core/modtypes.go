@@ -44,7 +44,7 @@ func (t *PrimitiveType) ConvertFromSDKResult(ctx context.Context, value any) (da
 	if value == nil {
 		return input, nil
 	}
-	return input.Decoder().DecodeInput(value)
+	return input.Decoder().DecodeInput(ctx, value)
 }
 
 func (t *PrimitiveType) ConvertToSDKInput(ctx context.Context, value dagql.Typed) (any, error) {

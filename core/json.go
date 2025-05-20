@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -75,7 +76,7 @@ func (p *JSON) UnmarshalJSON(bs []byte) error {
 
 var _ dagql.ScalarType = JSON{}
 
-func (JSON) DecodeInput(val any) (res dagql.Input, err error) {
+func (JSON) DecodeInput(ctx context.Context, val any) (res dagql.Input, err error) {
 	switch x := val.(type) {
 	case string:
 		if x == "" {

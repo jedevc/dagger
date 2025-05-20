@@ -152,7 +152,7 @@ type Setter interface {
 // InputDecoder is a type that knows how to decode values into Inputs.
 type InputDecoder interface {
 	// Decode converts a value to the Input type, if possible.
-	DecodeInput(any) (Input, error)
+	DecodeInput(context.Context, any) (Input, error)
 }
 
 // Wrapper is an interface for types that wrap another type.
@@ -198,7 +198,7 @@ func (i Int) TypeDefinition(view View) *ast.Definition {
 	}
 }
 
-func (Int) DecodeInput(val any) (Input, error) {
+func (Int) DecodeInput(ctx context.Context, val any) (Input, error) {
 	switch x := val.(type) {
 	case int:
 		return NewInt(x), nil
@@ -304,7 +304,7 @@ func (f Float) TypeDefinition(view View) *ast.Definition {
 	}
 }
 
-func (Float) DecodeInput(val any) (Input, error) {
+func (Float) DecodeInput(ctx context.Context, val any) (Input, error) {
 	switch x := val.(type) {
 	case float32:
 		return NewFloat(float64(x)), nil
@@ -405,7 +405,7 @@ func (b Boolean) TypeDefinition(view View) *ast.Definition {
 	}
 }
 
-func (Boolean) DecodeInput(val any) (Input, error) {
+func (Boolean) DecodeInput(ctx context.Context, val any) (Input, error) {
 	switch x := val.(type) {
 	case bool:
 		return NewBoolean(x), nil
@@ -490,7 +490,7 @@ func (s String) TypeDefinition(view View) *ast.Definition {
 	}
 }
 
-func (String) DecodeInput(val any) (Input, error) {
+func (String) DecodeInput(ctx context.Context, val any) (Input, error) {
 	switch x := val.(type) {
 	case string:
 		return NewString(x), nil
@@ -580,9 +580,9 @@ func (s Scalar[T]) TypeDefinition(view View) *ast.Definition {
 	return def
 }
 
-func (s Scalar[T]) DecodeInput(val any) (Input, error) {
+func (s Scalar[T]) DecodeInput(ctx context.Context, val any) (Input, error) {
 	var empty T
-	input, err := empty.DecodeInput(val)
+	input, err := empty.DecodeInput(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -676,7 +676,7 @@ func (i ID[T]) TypeDefinition(view View) *ast.Definition {
 //
 // It accepts either an *call.ID or a string. The string is expected to be
 // the base64-encoded representation of an *call.ID.
-func (i ID[T]) DecodeInput(val any) (Input, error) {
+func (i ID[T]) DecodeInput(ctx context.Context, val any) (Input, error) {
 	switch x := val.(type) {
 	case *call.ID:
 		return ID[T]{id: x, inner: i.inner}, nil
@@ -830,7 +830,7 @@ func (a ArrayInput[S]) Decoder() InputDecoder {
 
 var _ InputDecoder = ArrayInput[Input]{}
 
-func (a ArrayInput[I]) DecodeInput(val any) (Input, error) {
+func (a ArrayInput[I]) DecodeInput(ctx context.Context, val any) (Input, error) {
 	switch x := val.(type) {
 	case []any:
 		var zero I
@@ -838,7 +838,7 @@ func (a ArrayInput[I]) DecodeInput(val any) (Input, error) {
 
 		arr := make(ArrayInput[I], len(x))
 		for i, val := range x {
-			elem, err := decoder.DecodeInput(val)
+			elem, err := decoder.DecodeInput(ctx, val)
 			if err != nil {
 				return nil, fmt.Errorf("ArrayInput.New[%d]: %w", i, err)
 			}
@@ -852,7 +852,7 @@ func (a ArrayInput[I]) DecodeInput(val any) (Input, error) {
 		if err := dec.Decode(&vals); err != nil {
 			return nil, fmt.Errorf("decode %q: %w", x, err)
 		}
-		return a.DecodeInput(vals)
+		return a.DecodeInput(ctx, vals)
 	default:
 		return nil, fmt.Errorf("cannot create ArrayInput from %T", x)
 	}
@@ -979,8 +979,8 @@ func (e *EnumValues[T]) TypeDefinition(view View) *ast.Definition {
 	return def
 }
 
-func (e *EnumValues[T]) DecodeInput(val any) (Input, error) {
-	v, err := (&EnumValueName{Enum: e.TypeName()}).DecodeInput(val)
+func (e *EnumValues[T]) DecodeInput(ctx context.Context, val any) (Input, error) {
+	v, err := (&EnumValueName{Enum: e.TypeName()}).DecodeInput(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -1057,7 +1057,7 @@ func (e *EnumValueName) Decoder() InputDecoder {
 	return e
 }
 
-func (e *EnumValueName) DecodeInput(val any) (Input, error) {
+func (e *EnumValueName) DecodeInput(ctx context.Context, val any) (Input, error) {
 	switch x := val.(type) {
 	case *EnumValueName:
 		return &EnumValueName{Enum: e.Enum, Value: x.Value}, nil

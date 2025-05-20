@@ -45,7 +45,7 @@ func (m *ModuleEnumType) ConvertFromSDKResult(ctx context.Context, value any) (d
 			return nil, fmt.Errorf("%T.ConvertFromSDKResult: failed to get decoder: %w", m, err)
 		}
 
-		val, err := decoder.DecodeInput(value)
+		val, err := decoder.DecodeInput(ctx, value)
 		if err != nil {
 			return nil, fmt.Errorf("%T.ConvertFromSDKResult: invalid enum value %q for %q: %w", m, value, m.typeDef.Name, err)
 		}
@@ -64,7 +64,7 @@ func (m *ModuleEnumType) ConvertToSDKInput(ctx context.Context, value dagql.Type
 	if err != nil {
 		return nil, fmt.Errorf("%T.ConvertToSDKInput: failed to get decoder: %w", m, err)
 	}
-	return decoder.DecodeInput(value)
+	return decoder.DecodeInput(ctx, value)
 }
 
 func (m *ModuleEnumType) CollectCoreIDs(ctx context.Context, value dagql.Typed, ids map[digest.Digest]*resource.ID) error {
@@ -155,8 +155,8 @@ func (e *ModuleEnum) Decoder() dagql.InputDecoder {
 	return e
 }
 
-func (e *ModuleEnum) DecodeInput(val any) (dagql.Input, error) {
-	v, err := (&dagql.EnumValueName{Enum: e.TypeName()}).DecodeInput(val)
+func (e *ModuleEnum) DecodeInput(ctx context.Context, val any) (dagql.Input, error) {
+	v, err := (&dagql.EnumValueName{Enum: e.TypeName()}).DecodeInput(ctx, val)
 	if err != nil {
 		return nil, err
 	}

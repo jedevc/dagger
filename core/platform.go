@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -53,7 +54,7 @@ func (p Platform) ToLiteral() call.Literal {
 
 var _ dagql.ScalarType = Platform{}
 
-func (Platform) DecodeInput(val any) (dagql.Input, error) {
+func (Platform) DecodeInput(ctx context.Context, val any) (dagql.Input, error) {
 	switch x := val.(type) {
 	case string:
 		plat, err := platforms.Parse(x)

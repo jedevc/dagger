@@ -1032,12 +1032,12 @@ func (arg NamedInput) String() string {
 	return fmt.Sprintf("%s: %v", arg.Name, arg.Value.ToLiteral().ToAST())
 }
 
-type DecoderFunc func(any) (Input, error)
+type DecoderFunc func(context.Context, any) (Input, error)
 
 var _ InputDecoder = DecoderFunc(nil)
 
-func (f DecoderFunc) DecodeInput(val any) (Input, error) {
-	return f(val)
+func (f DecoderFunc) DecodeInput(ctx context.Context, val any) (Input, error) {
+	return f(ctx, val)
 }
 
 type InputObject[T Type] struct {
@@ -1055,13 +1055,13 @@ func (InputObject[T]) Type() *ast.Type {
 }
 
 func (InputObject[T]) Decoder() InputDecoder {
-	return DecoderFunc(func(val any) (Input, error) {
+	return DecoderFunc(func(ctx context.Context, val any) (Input, error) {
 		vals, ok := val.(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("expected map[string]any, got %T", val)
 		}
 		var obj T
-		if err := setInputObjectFields(&obj, vals); err != nil {
+		if err := setInputObjectFields(ctx, &obj, vals); err != nil {
 			return nil, err
 		}
 		return InputObject[T]{
@@ -1070,7 +1070,7 @@ func (InputObject[T]) Decoder() InputDecoder {
 	})
 }
 
-func setInputObjectFields(obj any, vals map[string]any) error {
+func setInputObjectFields(ctx context.Context, obj any, vals map[string]any) error {
 	objT := reflect.TypeOf(obj).Elem()
 	objV := reflect.ValueOf(obj)
 	if objT.Kind() != reflect.Struct {
@@ -1091,7 +1091,7 @@ func setInputObjectFields(obj any, vals map[string]any) error {
 		if fieldT.Anonymous {
 			// embedded struct
 			val := reflect.New(fieldT.Type)
-			if err := setInputObjectFields(val.Interface(), vals); err != nil {
+			if err := setInputObjectFields(ctx, val.Interface(), vals); err != nil {
 				return err
 			}
 			fieldV.Set(val.Elem())
@@ -1104,13 +1104,13 @@ func setInputObjectFields(obj any, vals map[string]any) error {
 		var input Input
 		if val, ok := vals[name]; ok {
 			var err error
-			input, err = zeroInput.Decoder().DecodeInput(val)
+			input, err = zeroInput.Decoder().DecodeInput(ctx, val)
 			if err != nil {
 				return err
 			}
 		} else if inputDefStr, hasDefault := fieldT.Tag.Lookup("default"); hasDefault {
 			var err error
-			input, err = zeroInput.Decoder().DecodeInput(inputDefStr)
+			input, err = zeroInput.Decoder().DecodeInput(ctx, inputDefStr)
 			if err != nil {
 				return fmt.Errorf("convert default value for arg %s: %w", name, err)
 			}
