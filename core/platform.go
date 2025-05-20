@@ -11,6 +11,7 @@ import (
 
 	"github.com/dagger/dagger/dagql"
 	"github.com/dagger/dagger/dagql/call"
+	"github.com/dagger/dagger/engine"
 )
 
 type Platform specs.Platform
@@ -57,11 +58,26 @@ var _ dagql.ScalarType = Platform{}
 func (Platform) DecodeInput(ctx context.Context, val any) (dagql.Input, error) {
 	switch x := val.(type) {
 	case string:
-		plat, err := platforms.Parse(x)
-		if err != nil {
-			return nil, err
+		switch x {
+		case "current":
+			return Platform(platforms.DefaultSpec()), nil
+		case "caller":
+			clientMetadata, err := engine.ClientMetadataFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			platform, err := platforms.Parse(clientMetadata.ClientPlatform)
+			if err != nil {
+				return nil, err
+			}
+			return Platform(platform), nil
+		default:
+			plat, err := platforms.Parse(x)
+			if err != nil {
+				return nil, err
+			}
+			return Platform(plat), nil
 		}
-		return Platform(plat), nil
 	default:
 		return nil, fmt.Errorf("cannot convert %T to Platform", val)
 	}
