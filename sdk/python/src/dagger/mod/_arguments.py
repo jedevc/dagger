@@ -1,13 +1,12 @@
 import dataclasses
-import enum
 import inspect
 import logging
 
 from cattrs.preconf.json import make_converter as make_json_converter
 
 import dagger
-from dagger.client import base
-from dagger.mod._types import APIName, ContextPath, Enum
+from dagger.client._converter import register_enum_hooks
+from dagger.mod._types import APIName, ContextPath
 
 logger = logging.getLogger(__name__)
 
@@ -158,20 +157,5 @@ def make_converter():
     conv = make_json_converter(
         detailed_validation=True,
     )
-
-    def to_enum_name(val: enum.Enum) -> str:
-        return val.name
-
-    def from_enum_name(name: str, cls: type[enum.Enum]) -> enum.Enum:
-        return cls[name]
-
-    conv.register_unstructure_hook(enum.Enum, to_enum_name)
-    conv.register_structure_hook(enum.Enum, from_enum_name)
-
-    conv.register_unstructure_hook(base.Enum, to_enum_name)
-    conv.register_structure_hook(base.Enum, from_enum_name)
-
-    conv.register_unstructure_hook(Enum, to_enum_name)
-    conv.register_structure_hook(Enum, from_enum_name)
-
+    register_enum_hooks(conv)
     return conv

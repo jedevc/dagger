@@ -1,6 +1,5 @@
 import collections
 import dataclasses
-import enum
 import functools
 import logging
 import typing
@@ -32,7 +31,7 @@ from dagger import (
     TransportError,
 )
 from dagger._exceptions import _query_error_from_transport
-from dagger.client import base
+from dagger.client._converter import register_enum_hooks
 from dagger.client._session import BaseConnection, SharedConnection
 from dagger.client.base import Scalar, Type
 
@@ -295,16 +294,6 @@ def make_converter(ctx: Context):
         _struct,
     )
 
-    def to_enum_name(val: enum.Enum) -> str:
-        return val.name
-
-    def from_enum_name(name: str, cls: type[enum.Enum]) -> enum.Enum:
-        return cls[name]
-
-    conv.register_unstructure_hook(enum.Enum, to_enum_name)
-    conv.register_structure_hook(enum.Enum, from_enum_name)
-
-    conv.register_unstructure_hook(base.Enum, to_enum_name)
-    conv.register_structure_hook(base.Enum, from_enum_name)
+    register_enum_hooks(conv)
 
     return conv
