@@ -5,8 +5,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"strconv"
@@ -14,7 +16,13 @@ import (
 	"sync"
 
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
 
+	contentapi "github.com/containerd/containerd/api/services/content/v1"
+	"github.com/containerd/containerd/content"
+	"github.com/containerd/containerd/mount"
+	"github.com/containerd/containerd/services/content/contentserver"
+	"github.com/docker/docker/pkg/idtools"
 	bkcache "github.com/moby/buildkit/cache"
 	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/executor"
@@ -22,6 +30,7 @@ import (
 	"github.com/moby/buildkit/identity"
 	bksession "github.com/moby/buildkit/session"
 	"github.com/moby/buildkit/session/secrets"
+	"github.com/moby/buildkit/snapshot"
 	bksolver "github.com/moby/buildkit/solver"
 	"github.com/moby/buildkit/solver/llbsolver/errdefs"
 	bkmounts "github.com/moby/buildkit/solver/llbsolver/mounts"
@@ -345,6 +354,11 @@ func (container *Container) WithExec(ctx context.Context, opts ContainerExecOpts
 		})
 	}
 
+	p.Mounts = append(p.Mounts, executor.Mount{
+		Src:  &containerdStoreMount{bk.Worker.ContentStore()},
+		Dest: "/var/run/dagger/store.sock",
+	})
+
 	meta := *metaSpec
 	meta.Env = slices.Clone(meta.Env)
 	secretEnv, err := loadSecretEnv(ctx, bkSessionGroup, session, secretEnvs)
@@ -397,6 +411,61 @@ func (container *Container) WithExec(ctx context.Context, opts ContainerExecOpts
 	}
 
 	return container, nil
+}
+
+type containerdStoreMount struct {
+	store content.Store
+}
+
+func (m *containerdStoreMount) Mount(ctx context.Context, readonly bool) (snapshot.Mountable, error) {
+	return &containerdStoreStaticMount{m.store}, nil
+}
+
+type containerdStoreStaticMount struct {
+	store content.Store
+}
+
+func (m *containerdStoreStaticMount) Mount() (_ []mount.Mount, cleanup func() error, rerr error) {
+	// _ []mount.Mount, cleanup func() error, rerr error) {
+	var cleanups buildkit.Cleanups
+	defer func() {
+		if rerr != nil {
+			cleanups.Run()
+		}
+	}()
+
+	tmpdir, err := os.MkdirTemp("", "containerd-store")
+	if err != nil {
+		return nil, nil, err
+	}
+	cleanups.Add("remove tmpdir", func() error {
+		return os.RemoveAll(tmpdir)
+	})
+	socketPath := filepath.Join(tmpdir, "store.sock")
+
+	server := grpc.NewServer()
+	srv := contentserver.New(m.store)
+	server.RegisterService(&contentapi.Content_ServiceDesc, srv)
+
+	listener, err := net.Listen("unix", socketPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	cleanups.Add("stop listener", func() error {
+		return listener.Close()
+	})
+	go server.Serve(listener)
+
+	return []mount.Mount{{
+		Type:   "bind",
+		Source: socketPath,
+		// Options: []string{"ro", "bind"},
+		Options: []string{"bind"},
+	}}, cleanups.Run, nil
+}
+
+func (m *containerdStoreStaticMount) IdentityMapping() *idtools.IdentityMapping {
+	return nil
 }
 
 func addDefaultEnvvar(env []string, k, v string) []string {

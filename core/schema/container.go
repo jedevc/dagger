@@ -14,6 +14,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/containerd/containerd/content"
+	"github.com/containerd/containerd/images"
+	"github.com/containerd/containerd/labels"
 	"github.com/containerd/platforms"
 	"github.com/distribution/reference"
 	bkcache "github.com/moby/buildkit/cache"
@@ -70,6 +73,10 @@ func (s *containerSchema) Install() {
 					`Address of the container image to download, in standard OCI ref format. Example:"registry.dagger.io/engine:latest"`,
 				),
 			),
+
+		dagql.NodeFuncWithCacheKey("fromInternal", DagOpContainerWrapper(s.srv, s.fromInternal), s.fromInternalCacheKey).
+			Args(),
+
 		// FIXME: deprecate
 		dagql.Func("build", s.build).
 			Doc(`Initializes this container from a Dockerfile build.`).
@@ -801,6 +808,113 @@ func (s *containerSchema) from(ctx context.Context, parent dagql.Instance[*core.
 	}
 
 	return inst, nil
+}
+
+type containerFromInternalArgs struct {
+	Descriptor string
+
+	DagOpInternalArgs
+}
+
+func (args containerFromInternalArgs) Digest() (digest.Digest, error) {
+	var manifestDesc specs.Descriptor
+	err := json.Unmarshal([]byte(args.Descriptor), &manifestDesc)
+	if err != nil {
+		return "", err
+	}
+
+	delete(manifestDesc.Annotations, specs.AnnotationCreated)
+
+	dt, err := json.Marshal(manifestDesc)
+	if err != nil {
+		return "", err
+	}
+
+	return dagql.HashFrom(string(dt)), nil
+}
+
+func (s *containerSchema) fromInternalCacheKey(ctx context.Context, parent dagql.Instance[*core.Container], args containerFromInternalArgs, cacheCfg dagql.CacheConfig) (*dagql.CacheConfig, error) {
+	argsDigest, err := args.Digest()
+	if err != nil {
+		return nil, err
+	}
+	cacheCfg.Digest = dagql.HashFrom(
+		parent.ID().Digest().String(),
+		string(argsDigest),
+	)
+	return &cacheCfg, nil
+}
+
+func (s *containerSchema) fromInternal(ctx context.Context, parent dagql.Instance[*core.Container], args containerFromInternalArgs) (inst dagql.Instance[*core.Container], _ error) {
+	query, err := core.CurrentQuery(ctx)
+	if err != nil {
+		return inst, err
+	}
+	bk, err := query.Buildkit(ctx)
+	if err != nil {
+		return inst, fmt.Errorf("failed to get buildkit client: %w", err)
+	}
+	platform := parent.Self.Platform
+
+	var manifestDesc specs.Descriptor
+	err = json.Unmarshal([]byte(args.Descriptor), &manifestDesc)
+	if err != nil {
+		return inst, err
+	}
+	manifest, err := images.Manifest(ctx, bk.Worker.ContentStore(), manifestDesc, platforms.Only(platform.Spec()))
+	if err != nil {
+		return inst, fmt.Errorf("could not fetch manifest from internal: %w", err)
+	}
+
+	configDesc := manifest.Config
+	configRaw, err := content.ReadBlob(ctx, bk.Worker.ContentStore(), configDesc)
+	if err != nil {
+		return inst, fmt.Errorf("could not fetch config from internal: %w", err)
+	}
+	var config specs.Image
+	if err := json.Unmarshal(configRaw, &config); err != nil {
+		return inst, err
+	}
+
+	if len(config.RootFS.DiffIDs) != len(manifest.Layers) {
+		return inst, fmt.Errorf("diff id count (%d) not equal to layer count (%d)", len(config.RootFS.DiffIDs), len(manifest.Layers))
+	}
+
+	var current bkcache.ImmutableRef
+	defer func() {
+		if err != nil && current != nil {
+			current.Release(context.WithoutCancel(ctx))
+		}
+	}()
+
+	var currentParent bkcache.ImmutableRef
+	for i, layerDesc := range manifest.Layers {
+		diffID := config.RootFS.DiffIDs[i]
+		if layerDesc.Annotations == nil {
+			layerDesc.Annotations = make(map[string]string)
+		}
+		layerDesc.Annotations[labels.LabelUncompressed] = diffID.String()
+
+		currentParent = current
+		current, err = query.BuildkitCache().GetByBlob(ctx, layerDesc, currentParent)
+		if currentParent != nil {
+			currentParent.Release(context.TODO())
+		}
+		if err != nil {
+			return inst, fmt.Errorf("cannot get blob: %w", err)
+		}
+	}
+
+	ctr := parent.Self.Clone()
+	ctr.Config = config.Config
+	ctr.FSResult = current
+	if manifest.Config.Platform != nil {
+		ctr.Platform = core.Platform(*manifest.Config.Platform)
+	}
+
+	// content hashed image
+
+	return dagql.NewInstanceForCurrentID(ctx, s.srv, parent, ctr)
 }
 
 type containerBuildArgs struct {
