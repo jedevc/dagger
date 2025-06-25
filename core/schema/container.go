@@ -910,14 +910,9 @@ func (args containerExecArgs) Digest() (digest.Digest, error) {
 func (s *containerSchema) withExec(ctx context.Context, parent dagql.Instance[*core.Container], args containerExecArgs) (inst dagql.Instance[*core.Container], _ error) {
 	parent.Self = parent.Self.Clone()
 	if !args.IsDagOp {
-		st := core.MetaMountState(ctx, args.Stdin)
-		def, err := st.Marshal(ctx, llb.Platform(parent.Self.Platform.Spec()))
-		if err != nil {
-			return inst, err
-		}
-		parent.Self.Meta = def.ToPB()
+		parent.Self.Meta = nil
 
-		inst, err = DagOpContainer(ctx, s.srv, parent, args, nil, s.withExec)
+		inst, err := DagOpContainer(ctx, s.srv, parent, args, nil, s.withExec)
 		if err != nil {
 			return inst, err
 		}

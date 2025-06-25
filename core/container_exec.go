@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"runtime"
@@ -357,7 +358,8 @@ func (container *Container) WithExec(ctx context.Context, opts ContainerExecOpts
 	worker = worker.ExecWorker(opt.CauseCtx, *execMD)
 	exec := worker.Executor()
 	_, execErr := exec.Run(ctx, "", p.Root, p.Mounts, executor.ProcessInfo{
-		Meta: meta,
+		Meta:  meta,
+		Stdin: io.NopCloser(strings.NewReader(opts.Stdin)),
 	}, nil)
 
 	for i, ref := range p.OutputRefs {
@@ -436,22 +438,16 @@ func (container *Container) usedClientID(ctx context.Context) (string, error) {
 }
 
 func (container *Container) metaFileContents(ctx context.Context, filePath string) (string, error) {
-	if container.Meta == nil {
-		return "", fmt.Errorf("%w: %s requires an exec", ErrNoCommand, filePath)
-	}
-
 	file := NewFile(
 		container.Meta,
-		path.Join(buildkit.MetaMountDestPath, filePath),
+		filePath,
 		container.Platform,
 		container.Services,
 	)
-
 	content, err := file.Contents(ctx)
 	if err != nil {
 		return "", err
 	}
-
 	return string(content), nil
 }
 
