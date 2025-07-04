@@ -46,6 +46,7 @@ func (m *CoreMod) Install(ctx context.Context, dag *dagql.Server) error {
 		&querySchema{dag},
 		&environmentSchema{dag}, // install environment middleware first
 		&directorySchema{dag},
+		&liveDirectorySchema{dag},
 		&fileSchema{dag},
 		&gitSchema{dag},
 		&containerSchema{dag},
