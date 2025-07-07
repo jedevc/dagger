@@ -44,6 +44,8 @@ fi
 # many systems default to 1024 which is far too low
 ulimit -n 1048576 || echo "cannot increase open FDs with ulimit, ignoring"
 
+mutagen sync list
+
 exec {{.EngineBin}} --config {{.EngineConfig}} "$@"
 `
 

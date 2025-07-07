@@ -163,8 +163,6 @@ func (s *directorySchema) Install() {
 				dagql.Arg("timestamp").Doc(`Timestamp to set dir/files in.`,
 					`Formatted in seconds following Unix epoch (e.g., 1672531199).`),
 			),
-		dagql.Func("asGit", s.asGit).
-			Doc(`Converts this directory to a local git repository`),
 		dagql.NodeFunc("terminal", s.terminal).
 			View(AfterVersion("v0.12.0")).
 			DoNotCache("Only creates a temporary container for the user to interact with and then returns original parent.").
@@ -187,6 +185,14 @@ func (s *directorySchema) Install() {
 				dagql.Arg("target").Doc(`Location of the file or directory to link to (e.g., "/existing/file").`),
 				dagql.Arg("linkName").Doc(`Location where the symbolic link will be created (e.g., "/new-file-link").`),
 			),
+
+		dagql.Func("asGit", s.asGit).
+			Doc(`Converts this directory to a local git repository`),
+
+		// dagql.Func("asTarball", s.asTarball).
+		// 	Doc(`Converts this directory to a tarball`),
+		// dagql.Func("fromTarball", s.fromTarball).
+		// 	Doc(`Converts this directory from a tarball`),
 	}.Install(s.srv)
 }
 

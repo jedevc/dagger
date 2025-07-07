@@ -212,6 +212,7 @@ func (build *Builder) Engine(ctx context.Context) (*dagger.Container, error) {
 		{path: "/opt/cni/bin/dnsname", file: build.dnsnameBinary()},
 		{path: consts.RuncPath, file: build.runcBin()},
 		{path: consts.DaggerInitPath, file: build.daggerInit()},
+		// {path: "/usr/bin/mutagen", file: build.mutagen()},
 	}
 	for _, bin := range build.qemuBins(ctx) {
 		name, err := bin.Name(ctx)
@@ -238,7 +239,12 @@ func (build *Builder) Engine(ctx context.Context) (*dagger.Container, error) {
 
 	ctr = ctr.
 		WithExec([]string{"ln", "-s", "/usr/bin/dial-stdio", "/usr/bin/buildctl"}).
-		WithDirectory(distconsts.EngineDefaultStateDir, dag.Directory())
+		WithDirectory(distconsts.EngineDefaultStateDir, dag.Directory()).
+		WithDirectory("/usr/local/bin/", build.mutagen()).
+		WithNewFile("/root/.ssh/config", `
+Host *
+	StrictHostKeyChecking no
+`)
 
 	if err := eg.Wait(); err != nil {
 		return nil, err
@@ -392,6 +398,18 @@ func (build *Builder) cniPlugins() []*dagger.File {
 
 func (build *Builder) daggerInit() *dagger.File {
 	return build.binary("./cmd/init", false, false)
+}
+
+func (build *Builder) mutagen() *dagger.Directory {
+	tar := dag.GithubRelease().Get("mutagen-io/mutagen", "v0.18.1").
+		FindAsset([]string{"mutagen", runtime.GOARCH, runtime.GOOS, "tar.gz"}).
+		File()
+	return dag.Container().From("alpine").
+		WithMountedFile("/target.tar.gz", tar).
+		WithWorkdir("/result").
+		WithExec([]string{"tar", "xf", "/target.tar.gz"}).
+		Directory(".")
+	// File("mutagen")
 }
 
 func (build *Builder) goPlatformEnv(ctr *dagger.Container) *dagger.Container {

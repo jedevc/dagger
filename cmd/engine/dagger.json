@@ -22,6 +22,11 @@
       "source": "../../modules/dirdiff"
     },
     {
+      "name": "github-release",
+      "source": "github.com/jedevc/daggerverse/github-release@github-release/v1.0.0",
+      "pin": "41eaf95c234d44e69e9c20c00099d4d6be7d1ace"
+    },
+    {
       "name": "go",
       "source": "../../modules/go"
     },

@@ -49,6 +49,7 @@ func (m *CoreMod) Install(ctx context.Context, dag *dagql.Server) error {
 		&fileSchema{dag},
 		&gitSchema{dag},
 		&containerSchema{dag},
+		&liveDirectorySchema{dag},
 		&cacheSchema{dag},
 		&secretSchema{dag},
 		&serviceSchema{dag},
