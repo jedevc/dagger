@@ -1,6 +1,7 @@
 package core
 
 import (
+	"cmp"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -635,10 +636,6 @@ func (GitSuite) TestGitCheckedTags(ctx context.Context, t *testctx.T) {
 		})
 	}
 
-	remotes := []*dagger.GitRepository{
-		c.Git("https://github.com/dagger/dagger.git"),
-	}
-
 	localClone := c.Container().
 		From(alpineImage).
 		WithExec([]string{"apk", "add", "git"}).
@@ -646,14 +643,52 @@ func (GitSuite) TestGitCheckedTags(ctx context.Context, t *testctx.T) {
 		WithExec([]string{"git", "clone", "https://github.com/dagger/dagger", "."}).
 		Directory(".")
 
-	remotes = append(remotes, localClone.AsGit())
+	remotes := []*dagger.GitRepository{
+		c.Git("https://github.com/dagger/dagger.git"),
+		localClone.AsGit(),
+	}
 
+	for _, git := range remotes {
+		url, err := git.URL(ctx)
+		require.NoError(t, err)
+		runCheckedTags(t, git, cmp.Or(url, "local"))
+	}
+}
+
+func (GitSuite) TestGitHeadIsNotBranch(ctx context.Context, t *testctx.T) {
+	c := connect(ctx, t)
+
+	requireHeadIsNotBranch := func(ctx context.Context, t *testctx.T, git *dagger.GitRef) {
+		ctr := c.Container().
+			From("alpine").
+			WithExec([]string{"apk", "add", "git"}).
+			WithWorkdir("/src").
+			WithMountedDirectory(".", git.Tree())
+
+		// why would they change HEAD?
+		// HEAD IS HEAD
+		out, err := ctr.WithExec([]string{"git", "rev-parse", "refs/heads/HEAD"}, dagger.ContainerWithExecOpts{
+			Expect: dagger.ReturnTypeFailure,
+		}).CombinedOutput(ctx)
+		require.NoError(t, err)
+		require.Contains(t, out, "unknown revision or path not in the working tree")
+
+		// make sure no dangling tmp refs exist
+		// (internal impl detail, but good to check they don't leak out)
+		out, err = ctr.WithExec([]string{"git", "ls-remote", "file:///src"}).Stdout(ctx)
+		require.NoError(t, err)
+		require.NotContains(t, out, "dagger.tmp")
+	}
+
+	remotes := []*dagger.GitRef{
+		c.Git("https://github.com/dagger/dagger.git").Head(),
+		c.Git("https://github.com/dagger/dagger.git").Head().Tree().AsGit().Head(),
+		c.Git("https://github.com/dagger/dagger.git").Head().Tree().AsGit().Head().Tree().AsGit().Head(),
+	}
 	for i, git := range remotes {
-		desc := "remote"
-		if i == 1 {
-			desc = "local AsGit"
-		}
-		runCheckedTags(t, git, desc)
+		t.Run(fmt.Sprintf("remote-%d", i), func(ctx context.Context, t *testctx.T) {
+			requireHeadIsNotBranch(ctx, t, git)
+		})
 	}
 }
 
