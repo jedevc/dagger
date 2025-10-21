@@ -133,6 +133,7 @@ type Server interface {
 
 	// Open a client's telemetry database.
 	ClientTelemetry(ctc context.Context, sessID, clientID string) (*clientdb.Queries, func() error, error)
+	EngineName() string
 }
 
 type queryKey struct{}
